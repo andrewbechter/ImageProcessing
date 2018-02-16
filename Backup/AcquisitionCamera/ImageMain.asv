@@ -1,0 +1,68 @@
+clear
+
+% Image Main
+I= Image;
+
+%Read file (this should be setup such that the filenames for ANDOR and
+%Power meter are paired together, (maybe vibrations and temperature too)
+
+% filename = 'Y:\NIC_Photon.fits';
+% filename = 'P:\iLocater\iLocater_Demonstrator\Lab_Stability\Set1\Grounded\acA2040-90um__21738906__20170425_115656125_0001.tiff'; 
+% filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_15\BackIllumination\FlexureTest_Up\Spooled files.sifx';
+% filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\Australis\Australis_6\Spooled files.sifx';
+% filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\NuCom\NuCom_sub_400\Spooled files.sifx';
+% filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\NuCom\NuCom_full\Spooled files.sifx';
+FitForOrientation=0; % set to 1 for rotated gaussin, 0 for non-rotated.
+LowMem = 1; %Lowmem 0 to store frames, 1 to process without storage
+Type = 'img'; % specify 'sifx','fits' or 'img' for all other types 
+time_units = 1e-6; %seconds
+
+if LowMem == 1
+%Low memory version
+[image_data] = Image.lowmem_process(filename,FitForOrientation);
+[I]= Process_to_object(I,image_data);
+
+clear image_data
+
+elseif LowMem == 0
+    test_frame = 1;
+    if strcmp(Type,'sifx') == 1
+        range = [1,10];
+        step = 1;
+        [image_data,frame_info] = Image.sif_read(filename,range,step);
+        I.Info = frame_info;
+        I.Frame = double(image_data);
+        clear image_data frame_info
+        test_frame = randsample(range(1):step:range(end),1);
+        
+    elseif strcmp(Type,'fits') == 1
+        [I.Frame]=fitsread(filename);
+        
+    else
+        [I.Frame]=imread(filename);
+        I.Frame = double(I.Frame);
+        
+    end
+    
+    % Fitting
+    I = I.RoughPeak;
+    I = FinePeak(I,FitForOrientation); %1 = Rotated fit, 0 = no rotation
+    
+    % Plotting frames (need the full data for this part)
+    I.PeakPlot(test_frame)
+end
+
+% Statistics
+% Mean
+% Median
+% Pythag
+% RMS
+% STD
+% Range
+% Residuals
+I.Scatter = I.Centroid(:,1);
+
+% Frquency Stuff
+I.Frequency = 1./mean(diff(I.Time*time_units));
+%% Fourier transform of filtered or unfiltered data
+[I]=Tourier_Transform (I); %output = [frequency, powerspectrum]
