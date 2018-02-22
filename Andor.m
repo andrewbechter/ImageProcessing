@@ -2,7 +2,7 @@ classdef Andor
     properties
         filename        % filename for later reference
         timeZero        % start of data set (may not need to keep this)
-        timeUnits       % Andor is recorderd in microseconds (time*1e-6 = seconds) 
+        timeUnits       % Andor is recorderd in microseconds (time*1e-6 = seconds)
         frame           % stored frames
         storedNums      % stored frame numbers
         noFrames        % total frames in data set
@@ -18,11 +18,16 @@ classdef Andor
         Mean            % calculates the mean value of all fit parameters
         RMS             % calculates the RMS value of all fit parameters
         Range           % calculates the Range (max) value of all fit parameters
-        
+        totalCounts     % total number of counts in the whole frame
+        flag            % if flag =1, frame trimming/ centroid failed, no 2D fit recorded.(i.e. horrible readout noise)
+        circPSF         % index value of all the PSF's identified as small and circular (i.e. have a core)
+        delta           % delta is the radial distance from the mean centroid.
+        exFrames        % index values for frames which meet a certain condition and have been saved
+        tempFrame       % temporary frames read in by the user for inspection
     end
     
     methods
-        function [obj] = Andor(andor_file,memoryStep,endFrame,type) % constructor (fills in field values with default settings)
+        function [obj] = Andor(andor_file,memoryStep,startFrame,endFrame,type) % constructor (fills in field values with default settings)
             
             % check the number of input variables and handle missing values
             if nargin <1
@@ -31,14 +36,19 @@ classdef Andor
                 memoryStep = 0;
                 type = 'fast';
                 endFrame = 0;
+                startFrame = 1;
             elseif nargin < 3
                 type = 'fast';
                 endFrame = 0;
+                startFrame = 1;
             elseif nargin < 4
+                type = 'fast';
+                endFrame = 0;
+            elseif nargin < 5
                 type = 'fast';
             end
             
-            delta = 50; % sets the frame size for fitting (delta*PSF size)
+            delta = 50; % sets the frame size for fitting (2*delta)
             obj.memoryStep = memoryStep;
             obj.timeUnits = 1e-6; %recorded in microseconds
             obj.filename = andor_file;% stores the filename with the object
@@ -55,7 +65,7 @@ classdef Andor
                 endFrame = obj.noFrames;
             end
             
-            for ii = 1:endFrame
+            for ii = startFrame:endFrame
                 
                 %read each frame individually
                 %=============================================%
@@ -67,37 +77,41 @@ classdef Andor
                 %purpose: fastpeak finder and initial guesses for trim and fit
                 %inputs: frame
                 %outputs: initial values format[amp,cenX,sigmaX,cenY,sigmaY,theta,offset];
-                [obj.iVals(ii,:)] = Andor.xcorrFit(imageData);
+                [obj.iVals(ii,:),obj.totalCounts(ii),obj.flag(ii) ] = Andor.xcorrFit(imageData);
                 %[iVals(ii,:)] = Andor.coarsefit(imageData);
                 
-                if strcmp(type,'full')==1
-                %=============================================%
-                %purpose: check boundaries of cuts vs. the edges of frame
-                %inputs: ycenter, xcenter, psf sigma, dimensions, delta
-                %outputs: cut locations for frame
-                [cuts(ii,:)] = Andor.findFrameCuts(obj.iVals(ii,4),obj.iVals(ii,2),obj.dimensions,delta);
-                
-                
-                %=============================================%
-                %inputs: ycenter, xcenter, constant sigma, dimensions, delta
-                %outputs: cut locations for frame
-                [cutFrame,xdata,flag] = Andor.trimFrame(imageData,cuts(ii,:));%trim the frame
-                
-                %=============================================%
-                %inputs: ycenter, xcenter, constant sigma, dimensions, delta
-                %outputs: cut locations for frame
-                [obj.fitParameters(ii,:)] = Andor.subPixelPeakV3(cutFrame,obj.iVals(ii,:),0,xdata);% sub pixel fitting
-                
-               
-                
-                if(mod(ii,obj.memoryStep) == 0) || ii == 1 % store every nth frame and the 1st one
-                    jj = jj+1;
-                    fprintf('%i\n',ii)
-                    obj.frame(:,:,jj) = imageData;
-                    obj.storedNums(jj) = ii;
-                    obj.cuts(jj,:) = cuts(ii,:);
-                end
-                
+                if strcmp(type,'full')==1 && obj.flag(ii) == 0
+                    %=============================================%
+                    %purpose: check boundaries of cuts vs. the edges of frame
+                    %inputs: ycenter, xcenter, psf sigma, dimensions, delta
+                    %outputs: cut locations for frame
+                    [cuts(ii,:)] = Andor.findFrameCuts(obj.iVals(ii,4),obj.iVals(ii,2),obj.dimensions,delta);
+                    
+                    
+                    %=============================================%
+                    %inputs: ycenter, xcenter, constant sigma, dimensions, delta
+                    %outputs: cut locations for frame
+                    [cutFrame,xdata,flag] = Andor.trimFrame(imageData,cuts(ii,:));%trim the frame
+                    
+                    if flag ==1
+                        obj.fitParameters(ii,:) = zeros(1,length(obj.iVals(ii,:)));
+                        obj.flag(ii) = 1;
+                    else
+                        %=============================================%
+                        %inputs: ycenter, xcenter, constant sigma, dimensions, delta
+                        %outputs: cut locations for frame
+                        [obj.fitParameters(ii,:)] = Andor.subPixelPeakV3(cutFrame,obj.iVals(ii,:),0,xdata);% sub pixel fitting
+                    end
+                    
+                    
+                    if(mod(ii,obj.memoryStep) == 0) || ii == 1 % store every nth frame and the 1st one
+                        jj = jj+1;
+                        fprintf('%i\n',ii)
+                        obj.frame(:,:,jj) = imageData;
+                        obj.storedNums(jj) = ii;
+                        obj.cuts(jj,:) = cuts(ii,:);
+                    end
+                    
                 end
             end
             
@@ -108,11 +122,11 @@ classdef Andor
         %=============================================%
         % methods that calculate time series data from object %
         function [obj] = calcFrameRate(obj)
-        obj.frameRate = mean(1./diff(obj.timeUnits.*obj.time(:,1)));
-        end   
+            obj.frameRate = mean(1./diff(obj.timeUnits.*obj.time(:,1)));
+        end
         function [obj] = calcFFT(obj,xdata)
             if nargin <2
-               xdata =  obj.fitParameters(:,2);
+                xdata =  obj.fitParameters(:,4);
             end
             Fs = obj.frameRate;
             X = xdata;
@@ -128,7 +142,7 @@ classdef Andor
             obj.FFT(:,1) = f;
             obj.FFT(:,2) = P1;
             
-        end 
+        end
         function [obj] = calcPSD(obj,xdata)
             if nargin <2
                 xdata =  obj.fitParameters(:,2);
@@ -143,11 +157,21 @@ classdef Andor
             obj.PSD(:,1) = f;
             obj.PSD(:,2) = psdx;
         end
-        
         %=============================================%
         % methods that calculate image quality data from object %
+        function [obj] = calcCircPSF(obj,sigma)
+            % this function finds all the circular PSFs and returns their index in obj.circPSF.
+            % So far a sigma value of <5 seems to correlate with a good 'core'
+            % so that is the default setting.
+            if nargin < 2
+                value = 5;
+            else
+                value = sigma;
+            end
+            [ind] = find(obj.fitParameters(:,3) < value & obj.fitParameters(:,5) < value & obj.fitParameters(:,1) > 4500);
+            obj.circPSF = ind;
+        end
         function [obj] = calcWFE(obj)
-            
         end
         function [obj] = calcStrehlRatio(obj)
         end
@@ -161,10 +185,15 @@ classdef Andor
         function [obj] = calcRange (obj)
             obj.Range = mean(obj.fitParameters); % Mean value of Centroid parameters
         end
-        function [obj] = calcRMS(obj)
+        function [obj] = calcRMS (obj)
             obj.RMS = std(obj.fitParameters); % RMS value of Centroid parameters
         end
-        
+        function [obj] = calcDelta(obj)
+            x = abs(obj.fitParameters(:,2)-obj.Mean(:,2)); % absolute value from the mean in x
+            y = abs(obj.fitParameters(:,4)-obj.Mean(:,4)); % absolute value from the mean in y
+            r = sqrt(x.^2+y.^2); % pythag to find radius
+            obj.delta = r; % assign value to obj
+        end
         %=============================================%
         % methods that bundle analysis methods %
         function [obj] = analyzeAndorData(obj)
@@ -177,9 +206,8 @@ classdef Andor
         end
         function [obj] = quickAnalyzeAndorData(obj)
         end
-        
         %=============================================%
-        % methods that plot data from object %
+        % methods that plot data from object 
         function psfPlot(obj,data_number)
             InterpolationMethod = 'nearest'; % 'nearest','linear','spline','cubic'
             if nargin <2
@@ -202,8 +230,8 @@ classdef Andor
                 Z = data;
             else
                 cuts = obj.cuts(data_number,:);
-                [X,Y] = meshgrid(cuts(1):cuts(2),cuts(3):cuts(4));
-                Z = data(cuts(3):cuts(4),cuts(1):cuts(2)); % cut data at the locations corresponding to the chosen frame size.
+                [X,Y] = meshgrid(cuts(3):cuts(4),cuts(1):cuts(2));
+                Z = data(cuts(1):cuts(2),cuts(3):cuts(4)); % cut data at the locations corresponding to the chosen frame size.
             end
             %figure creation
             
@@ -273,10 +301,10 @@ classdef Andor
                 ['\sigma_y (pix):',num2str(x(5),'%100.3f')],['Angle (deg):',num2str(dispangle,'%100.3f')]...
                 ,['Constant:',num2str(x(7),'%100.3f')]},'FontSize',12);
             axis off
-        
+            
         end
         function histPlot(obj,x,y,stats)
-
+            
             if nargin < 2
                 x = obj.fitParameters(:,2); %xcen
                 xmu = obj.Mean(1,2); %x average
@@ -297,7 +325,7 @@ classdef Andor
                 n = size(x,1); %number of datapoints
             end
             
-
+            
             %figure creation
             hf2 = figure;
             set(hf2, 'Position', [20 20 950 950])
@@ -308,7 +336,6 @@ classdef Andor
             ylim([ymu-4*yrms, ymu+4*yrms])
             xlabel('Horizontal Pixels')
             ylabel('Vertical Pixels')
-            axis equal
             box on
             p1.FontSize = 12;
             hold on
@@ -352,21 +379,48 @@ classdef Andor
             xlim([0.5 obj.frameRate/2])
         end
         
+        %=============================================%
+        % methods that plot data from object or find frames which can be plotted%
+        function [obj] = checkFrame(obj, index)
+            %this method is useful for finding examples of frames that
+            %meet some condition and are stored (i.e can be viewed). For
+            %example the default finds circular PSFs (circPSF) stored in
+            %the object and adjusts the index value to work with psfPlot
+            %method. i.e. obj.psfPlot(exFrames(2))
+            
+            %inputs : Andor object, index array (e.g. Aus6, Aus6.circPSF) 
+            %output : populates exFrame property. (example Frames)
+            
+            if nargin <2
+                index = obj.circPSF; 
+            end
+            
+            ind = find(mod(index,obj.memoryStep)==0); % find all frames in circPSF index that are also stored
+            obj.exFrames = (index(ind)/obj.memoryStep)+1; % adjust index to be used in psfPlot
+        end
+        function [obj] = inspectFrame(obj,frameNumber)
+            [signal,~,and_size,width,height] = Andor.getDataSetInfo(obj.filename);
+            [imageData,~] = Andor.getFrameInfo(signal,and_size,width,height,frameNumber);
+            obj.tempFrame = imageData;
+            figure
+            imagesc(obj.tempFrame)
+        end
     end
     
     methods(Static)
         %=============================================%
         % functions that fit image data %
-        function [initialValues] = xcorrFit(frame)
+        function [initialValues,totalCounts,flag] = xcorrFit(frame)
             
-            s = size(frame);
+            s = size(frame); %find frame dimensions
+            totalCounts = sum(sum(frame));
             % make template image
             center = [s(2) s(1)]/2;
-            sig = 5; 
+            sig = 5;
             [MatX,MatY]=meshgrid(1:s(2),1:s(1));
             template=circ_gauss(MatX,MatY,sig,center);
             
-%             C = xcorr2(template,frame);
+            %             C = xcorr2(template,frame);
             C = xcorr2_fft(template,frame);
             
             [~,I] = max(C(:)); %find max of linearized data in xcorr
@@ -377,38 +431,45 @@ classdef Andor
             
             amp = frame(centroid(1),centroid(2));
             
-            rstartpoints = [amp centroid(2) sig 0];
-            cstartpoints = [amp centroid(1) sig 0];
-            
-            geqn = 'a.*exp(-0.5*((x-b)/c).^2)+d';
-            
-            lb = [0,0,0,0];
-            ub = [inf,inf,inf,inf]; % force sigma to be small
-            optionsR = fitoptions(geqn);
-            optionsR.StartPoint = rstartpoints;
-            optionsR.Lower = lb;
-            optionsR.Upper = ub;
-
-            optionsC= fitoptions(geqn);
-            optionsC.StartPoint = cstartpoints;
-            optionsC.Lower = lb;
-            optionsC.Upper = ub;
-        
-            cenrow = frame(centroid(1),:);
-            cencol = frame(:,centroid(2));
-%             
-%             [rfit,rgof] = fit((1:s(2))',cenrow',geqn,optionsR);
-%             [cfit,cgof] = fit((1:s(1))',cencol,geqn,optionsR);
-            
-            [rfit,rgof] = fit((centroid(2)-sig:centroid(2)+sig)',cenrow([centroid(2)-sig:centroid(2)+sig])',geqn,optionsR);
-            [cfit,cgof] = fit((centroid(1)-sig:centroid(1)+sig)',cencol([centroid(1)-sig:centroid(1)+sig]),geqn,optionsR);
-            
-            c=coeffvalues(cfit);
-            r=coeffvalues(rfit);
-            
-            sigma_guess =([r(3),c(3)]);
-            initialValues = [amp,centroid(2),sigma_guess(1),centroid(1),sigma_guess(2),0,0]; %amp,x,y,sigmax,sigmay,theta,offset
-            
+            if centroid(1)<10 || centroid(1)> s(1)-10 ||centroid(2)<10 || centroid(2)>s(2)-10
+                initialValues = [0,0,0,0,0,0,0];
+                flag = 1;
+                
+            else
+                
+                rstartpoints = [amp centroid(2) sig 0];
+                cstartpoints = [amp centroid(1) sig 0];
+                
+                geqn = 'a.*exp(-0.5*((x-b)/c).^2)+d';
+                
+                lb = [0,0,0,0];
+                ub = [inf,inf,inf,inf]; % force sigma to be small
+                optionsR = fitoptions(geqn);
+                optionsR.StartPoint = rstartpoints;
+                optionsR.Lower = lb;
+                optionsR.Upper = ub;
+                
+                optionsC= fitoptions(geqn);
+                optionsC.StartPoint = cstartpoints;
+                optionsC.Lower = lb;
+                optionsC.Upper = ub;
+                
+                cenrow = frame(centroid(1),:);
+                cencol = frame(:,centroid(2));
+                %
+                %             [rfit,rgof] = fit((1:s(2))',cenrow',geqn,optionsR);
+                %             [cfit,cgof] = fit((1:s(1))',cencol,geqn,optionsR);
+                
+                [rfit,rgof] = fit((centroid(2)-sig:centroid(2)+sig)',cenrow([centroid(2)-sig:centroid(2)+sig])',geqn,optionsR);
+                [cfit,cgof] = fit((centroid(1)-sig:centroid(1)+sig)',cencol([centroid(1)-sig:centroid(1)+sig]),geqn,optionsR);
+                
+                c=coeffvalues(cfit);
+                r=coeffvalues(rfit);
+                
+                sigma_guess =([r(3),c(3)]);
+                initialValues = [amp,centroid(2),sigma_guess(1),centroid(1),sigma_guess(2),0,0]; %amp,x,y,sigmax,sigmay,theta,offset
+                flag = 0;
+            end
             
         end
         function [initialValues] = coarsefit(frame)
@@ -479,7 +540,7 @@ classdef Andor
                 % call LSQ curve fit with theta
                 [x,resnorm,residual,exitflag,output,lambda,J1] = lsqcurvefit(@D2GaussFunctionRot,x0,xdata,frame,lb,ub,options);
             else
-                lb = [0,0,0,0,0,0,0];
+                lb = [0,0,0.1,0,0.1,0,0];
                 ub = [x0(1)*1.2,inf,inf,inf,inf,0,inf];
                 % call LSQ curve fit without theta
                 [x,resnorm,residual,exitflag,output,lambda,J1] = lsqcurvefit(@D2GaussFunction,x0,xdata,frame,lb,ub,options);
@@ -487,7 +548,7 @@ classdef Andor
             end
         end
         %=============================================%
-        % functions that recover the time stamps %
+        % functions that recover the image and time stamps %
         function [timeZero] = getTimeZero (signal)
             [rc,format_time] = atsif_getpropertyvalue(signal,'FormattedTime');
             frame_info{1,1} = 'Formatted Time';
@@ -519,7 +580,7 @@ classdef Andor
                 
                 %This shapes a frame
                 imageData = double(reshape(data,width,height));
-                imageData = flipud(rot90(imageData));
+                imageData = rot90(imageData);
                 
                 prop_str = ['TimeStamp ',num2str(frame_number)]; %prep time stamp variable
                 [rc,time] = atsif_getpropertyvalue(signal,prop_str); %grab the time stamp
@@ -538,7 +599,7 @@ classdef Andor
             end
         end
         %=============================================%
-        % functions that condition frame %
+        % functions that condition frame for reading in and trimming%
         function [signal,no_frames,and_size,width,height] = getDataSetInfo(andor_file)
             rc=atsif_setfileaccessmode(0);
             rc=atsif_readfromfile(andor_file);
@@ -560,7 +621,7 @@ classdef Andor
             end
         end
         function [frame,xdata,flag] = trimFrame(frame,cuts)
-            [X,Y] = meshgrid(cuts(1):cuts(2),cuts(3):cuts(4));
+            [X,Y] = meshgrid(cuts(3):cuts(4),cuts(1):cuts(2));
             % Meshgrid steps over '0' which makes the frame 1 pixel larger than
             % desired. Truncates to correct size. Offsets all frame values (i.e pixels)
             % to be centered at location of PSF - represents the actual detector location
@@ -577,10 +638,11 @@ classdef Andor
             if(Bot < 1 || Top > size(frame,1) || Left < 1 || Right > size(frame,2))
                 flag = 1;
             else
-                frame = frame(cuts(3):cuts(4),cuts(1):cuts(2)); % cut data at the locations corresponding to the chosen frame size.
+                frame = frame(cuts(1):cuts(2),cuts(3):cuts(4)); % cut data at the locations corresponding to the chosen frame size.
             end
         end
         %=============================================%
+        %old function for reading andor data (not used)%
         function [image_data] = readData(andor_file)
             image_data = [];
             frame_limit = 0; %If 0 or less, reads all frames. Otherwise only reads this many frames
@@ -662,6 +724,7 @@ classdef Andor
             end
         end
         
+        
     end
 end
 
@@ -721,7 +784,7 @@ F =exp(-1./(2.).* ((X-X0).^2./SigmaX.^2 +(Y-Y0).^2./SigmaY.^2));
 %    I = find(MatR>cutoff);
 %    F(I) = 0;
 % end
-% 
+%
 % if (isnan(Norm)),
 %    % do not normalize
 % else
@@ -732,7 +795,7 @@ function c = xcorr2_fft(a,b)
 %XCORR2_FFT Two-dimensional cross-correlation evaluated with FFT algorithm.
 %   XCORR2_FFT(A,B) computes the cross-correlation of matrices A and B.
 %   XCORR2(A) is the autocorrelation function.
-%   
+%
 %   When matrices A and B are real, XCORR2_FFT is numerically equivalent to
 %   XCORR2 but much faster.
 %
@@ -745,7 +808,7 @@ function c = xcorr2_fft(a,b)
 %   Elapsed time is 0.223502 seconds.
 %   tic,cf = xcorr2_fft(a,b);toc
 %   Elapsed time is 0.030935 seconds.
-% 
+%
 %   max(abs(cf(:)-cl(:)))
 %   ans = 4.1922e-13
 %
@@ -755,7 +818,7 @@ function c = xcorr2_fft(a,b)
 %   See also CONV2, XCORR, XCORR2 and FILTER2.
 
 if nargin == 1
-	b = a;
+    b = a;
 end
 
 % Matrix dimensions
