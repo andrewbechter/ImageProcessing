@@ -102,7 +102,7 @@ classdef Image
             obj.delta = r; % assign value to obj
         end
         %=============================================%
-        % methods that plot data from object 
+        % methods that plot data from object
         function psfPlot(obj,data_number)
             InterpolationMethod = 'nearest'; % 'nearest','linear','spline','cubic'
             if nargin <2
@@ -273,7 +273,6 @@ classdef Image
             set(gca,'FontSize',16)
             xlim([0.5 obj.frameRate/2])
         end
-        
         %=============================================%
         % methods that plot data from object or find frames which can be plotted%
         function [obj] = checkFrame(obj, index)
@@ -283,16 +282,30 @@ classdef Image
             %the object and adjusts the index value to work with psfPlot
             %method. i.e. obj.psfPlot(exFrames(2))
             
-            %inputs : Andor object, index array (e.g. Aus6, Aus6.circPSF) 
+            %inputs : Andor object, index array (e.g. Aus6, Aus6.circPSF)
             %output : populates exFrame property. (example Frames)
             
             if nargin <2
-                index = obj.circPSF; 
+                index = obj.circPSF;
             end
             
             ind = find(mod(index,obj.memoryStep)==0); % find all frames in circPSF index that are also stored
             obj.exFrames = (index(ind)/obj.memoryStep)+1; % adjust index to be used in psfPlot
         end
+        %=============================================%
+        % methods to save object%
+        function saveToStruct(obj, filename)
+            % this function saves the object made from Image class as a
+            % standard matlab structure
+            varname = inputname(1);
+            props = properties(obj);
+            for p = 1:numel(props)
+                s.(props{p})=obj.(props{p});
+            end
+            eval([varname ' = s'])
+            save(filename, varname)
+        end
+        
     end
     
     methods(Static)
@@ -452,14 +465,14 @@ classdef Image
             
             %%%%%%%%%%%----------------------remove bad frames----------------------%%%%%%%%%%%
             flag = 0; % error check
-             if(Bot > size(frame,1) || Top < 1  || Left < 1 || Right > size(frame,2))
+            if(Bot > size(frame,1) || Top < 1  || Left < 1 || Right > size(frame,2))
                 flag = 1;
             else
                 frame = frame(cuts(3):cuts(4),cuts(1):cuts(2)); % cut data at the locations corresponding to the chosen frame size.
             end
         end
         %=============================================%
-        %old function for reading andor data (not used)%
+        
     end
 end
 
@@ -571,3 +584,4 @@ ffta = fft2(apad);
 fftb = fft2(bpad);
 c = real(ifft2(ffta.*fftb));
 end
+
