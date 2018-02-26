@@ -2,20 +2,22 @@
 Reads in frames from ANDOR Zyla and Basler detectors. Calculates centroids, 2D Gaussian fit parameters, FFTs, PSDs, and scatter statistics
 
 Processing ANDOR data ('.sifx' or '.sif') can be done using the command line or the 'Process.m' template script.
-For example:
+An example command: 
 
-%function name: Andor \n
-%purpose: grabs a frame or frames from the .sifx spool, performance a basic fit, a full 2D fit, and retrieves the time stamp. 
-%inputs: ## filaname: filename including directory and .sifx (This input is required)
-%        ## memoryStep: interval to store frames (Total frames stored should be ~100 max, storing too many (10K) will use more memory). 
-%        ## frameStart: frame number to start on        
-%        ## frameEnd: frame number to end on 
-%        ## type: 'fast' or 'full' processing. 'fast' only returns approximate fit parameters, 'full' uses 2D Gaussian fit
-%        
-%notes: only the filename needs to be specified. The defaults for the rest of the inputs are : no frames
-%stored, start frame is 1, end frame is the last frame, and all frames processed using 'full'
-%outputs: Andor object with fit parameters, time stamps and stored frames
-%if specified. 
+filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\Australis\Australis_1\Spooled files.sifx';
+Australis = Andor(filename); % reads in data and populates fundamental object properties using default methods and steps
+
+function name: Andor 
+purpose: grabs a frame or frames from the .sifx spool, performance a basic fit, a full 2D fit, and retrieves the time stamp. 
+inputs: filaname: filename including directory and .sifx (This input is required)
+        memoryStep: interval to store frames (Total frames stored should be ~100 max, storing too many (10K) will use more memory). 
+        frameStart: frame number to start on        
+        frameEnd: frame number to end on 
+        type: 'fast' or 'full' processing. 'fast' only returns approximate fit parameters, 'full' uses 2D Gaussian fit
+        
+notes: only the filename needs to be specified. The defaults for the rest of the inputs are : no frames
+stored, start frame is 1, end frame is the last frame, and all frames processed using 'full'
+outputs: Andor object with fit parameters, time stamps and stored frames if specified. 
 
 memStep = 1000; %store every 1000th frame except for the first interval (Starts at 1, then 1000, 2000 etc.)
 startFile = 1; % start at the first frame
