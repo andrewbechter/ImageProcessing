@@ -7,7 +7,7 @@ An example command:
 filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\Australis\Australis_1\Spooled files.sifx';
 Australis = Andor(filename); % reads in data and populates fundamental object properties using default methods and steps
 
-function name: Andor 
+function name: Andor ;
 purpose: grabs a frame or frames from the .sifx spool, performance a basic fit, a full 2D fit, and retrieves the time stamp. 
 inputs: filaname: filename including directory and .sifx (This input is required)
         memoryStep: interval to store frames (Total frames stored should be ~100 max, storing too many (10K) will use more memory). 
