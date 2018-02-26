@@ -1,66 +1,55 @@
 # ImageProcessing
 Reads in frames from ANDOR Zyla and Basler detectors. Calculates centroids, 2D Gaussian fit parameters, FFTs, PSDs, and scatter statistics
 
-Processing ANDOR data ('.sifx' or '.sif') can be done using the command line or the 'Process.m' template script.
-An example command: 
+### Prerequisites
+Matlab and Matlab curve fitting toolbox is required. 
+For native ANDOR files (.sifx, .sif), the MATLAB SIF reader is required.
 
-filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\Australis\Australis_1\Spooled files.sifx';
-Australis = Andor(filename); % reads in data and populates fundamental object properties using default methods and steps
+## Processing a data set
 
-function name: Andor
-purpose: grabs a frame or frames from the .sifx spool, performance a basic fit, a full 2D fit, and retrieves the time stamp. 
-inputs: filaname: filename including directory and .sifx (This input is required)
-        memoryStep: interval to store frames (Total frames stored should be ~100 max, storing too many (10K) will use more memory). 
-        frameStart: frame number to start on        
-        frameEnd: frame number to end on 
-        type: 'fast' or 'full' processing. 'fast' only returns approximate fit parameters, 'full' uses 2D Gaussian fit
-        
-notes: only the filename needs to be specified. The defaults for the rest of the inputs are : no frames
-stored, start frame is 1, end frame is the last frame, and all frames processed using 'full'
-outputs: Andor object with fit parameters, time stamps and stored frames if specified. 
+The default class constructor methods "Basler" and "Andor" require the directory of the data set for processing. The default mode for data processing will start at the first file/frame and end with the last file/frame. Only the first frame is stored in the object variable to conserve memory. A full 2D Gaussian fit is performed on every frame. 
 
-memStep = 1000; %store every 1000th frame except for the first interval (Starts at 1, then 1000, 2000 etc.)
-startFile = 1; % start at the first frame
-endFile = 0; % go until the end 
+For BASLER files the filename synatax is as follows:
+```
+filename = 'filename = 'P:\iLocater\QuadCell\IR\Set118\'
+labSet = Basler(filename);
+```
+For ANDOR files the filename synatax is as follows:
+```
+filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\Australis\Australis_1\Spooled files.sifx'
+Australis = Andor(filename);
+```
+The Australis variable will be a type Andor and the labSet variable will be type Basler. 
 
-filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\Australis\Australis_1\Spooled files.sifx';
-Australis = Andor(filename,memStep,startFile,endFile,'full'); % reads in data and populates fundamental object properties
+There are four options availible for processing data in different ways: stored frames, start frame , end Frame and fit type. 
 
-Loading ANDOR variables:
+```
+filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\Australis\Australis_1\Spooled files.sifx'
+Australis = Andor(filename,storedFrames,startFrame,endFrame,fitType);
+```
 
-All ANDOR data has been reduced and saved using the ImageProcessing software on the shared storage. The matlab data types are objects created by custom classes found in Software:\ImageProcessing\Andor. To load the files in matlab correctly, the above path to the Andor folder must be in your matlab path! If the file loads correclty the variable will immediately appread in the workspace as a type 'Andor'.
-
-Once the files are loaded and recognized by matlab, object properties/methods contained in class files can be accessed using the dot notation.
-
-For example:
-"Australis.mat" is the stored matlab variable name.
-
-Add "Software:\ImageProcessing\Andor" to path. You can do this by manually navigating and adding to path or running script "addPath.m"
-
-"load(Australis.mat)" in the command line or double click the variable in an explorer window.
-The object can be seen in the workspace. Double clicking the variable will reveal information/parameters avaible to the user. The same can be done by typing "Australis' into the terminal.
-
-Analysing ANDOR variables:
-
-%function name: analyzeAndorData
-%purpose: calculates useful things using time stamps and fit parameters
-%inputs: ## Andor object
-%notes: this method modifies exisiting Andor objects by populating or
-%overwriting useful things for analysis 
-%outputs: ## Andor object
+storedFrame can be any integer, n. This variable will store every nth frame, incuding the first. 0 will not store any frames
+startFrame allows the user to adjust which frame to start in the set. 
 
 
-Parameters can be accessed just like standard variables when using the dot notation. 
+## Authors
 
-For example:
+* **Andrew Bechter** - *Initial work* - [PurpleBooth](https://github.com/PurpleBooth)
 
-"Australis.fitParameters" will show all the 2D fit values
+See also the list of [contributors](https://github.com/your/project/contributors) who participated in this project.
 
-Some built in functions can do statistical analysis and plotting
- 
-"Australis.psfPlot" will plot the first frame and show the fit values 
+## License
 
-The property list for Andor Class is provided below 
+N/A
+
+## Acknowledgments
+
+* Hat tip to anyone who's code was used
+* Inspiration
+* etc
+
+
+
 
         filename        % filename for later reference
         timeUnits       % Andor is recorderd in microseconds (time*1e-6 = seconds)
