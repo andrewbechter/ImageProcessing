@@ -4,7 +4,7 @@ Reads in frames from ANDOR Zyla and Basler detectors. Calculates centroids, 2D G
 Processing ANDOR data ('.sifx' or '.sif') can be done using the command line or the 'Process.m' template script.
 For example:
 
-%function name: Andor
+%function name: Andor \n
 %purpose: grabs a frame or frames from the .sifx spool, performance a basic fit, a full 2D fit, and retrieves the time stamp. 
 %inputs: ## filaname: filename including directory and .sifx (This input is required)
 %        ## memoryStep: interval to store frames (Total frames stored should be ~100 max, storing too many (10K) will use more memory). 
