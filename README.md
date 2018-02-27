@@ -21,16 +21,22 @@ Australis = Andor(filename);
 ```
 The Australis variable will be a type Andor and the labSet variable will be type Basler. 
 
-There are four options availible for processing data in different ways: stored frames, start frame , end Frame and fit type. 
+There are four options availible for processing data in different ways: stored frames, start frame , end Frame and fit type. For example:
 
 ```
 filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\Australis\Australis_1\Spooled files.sifx'
 Australis = Andor(filename,storedFrames,startFrame,endFrame,fitType);
 ```
 
-storedFrame can be any integer, n. This variable will store every nth frame, incuding the first. 0 will not store any frames
+storedFrame can be any integer, n. This variable will store every nth frame, incuding the first. 0 will only store the first frame.
 startFrame allows the user to adjust which frame to start in the set. 
+endFrame allows the user to adjust the final frame. a zero value will process to the end. 
+fitTpye can be either 'full' or 'fast'. 'full' uses the 2D Gausssian fit whereas 'fast' computes 1D slice fits about the cener pixel. Contrary to the name, 'fast' does not actually work that much faster so 'full' is recommended. Additional options will be present in the future for that. 
 
+```
+Australis = Andor(filename,100,5,0,'full'); 
+% Australis variable will store every 100th frame, starting with thr 5th and ending with the final frame using the 2D fit algorithm
+```
 
 ## Authors
 
