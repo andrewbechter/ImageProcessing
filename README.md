@@ -37,10 +37,10 @@ user inputs:
 Australis = Andor(filename,100,5,0,'full'); 
 % Australis variable will store every 100th frame, starting with thr 5th and ending with the final frame using the 2D fit algorithm
 ```
-parameters
+object parameters
 ```
         filename        % filename for later reference
-        timeUnits       % Andor is recorderd in microseconds (time*1e-6 = seconds)
+        timeUnits       % e.g. Andor is recorderd in microseconds (1e-6 = seconds)
         frame           % stored frames
         storedNums      % stored frame numbers
         noFrames        % total frames in data set
@@ -64,7 +64,7 @@ parameters
         tempFrame       % temporary frames read in by the user for inspection
 
 ```
-For a full list of functions see the better readMe page (working on it right now). 
+For a full list of functions see a better README (working on it right now). 
 
 ## Authors
 * **Andrew Bechter** 
