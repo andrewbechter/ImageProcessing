@@ -32,7 +32,7 @@ user inputs:
 - 'storedFrame' can be any integer, n. This variable will store every nth frame, incuding the first. 0 will only store the first frame.
 - 'startFrame' allows the user to adjust which frame to start in the set. 
 - 'endFrame' allows the user to adjust the final frame. a zero value will process to the end. 
-- 'fitTpye' can be either 'full' or 'fast'. 'full' uses the 2D Gausssian fit whereas 'fast' computes 1D slice fits about the cener pixel. Contrary to the name, 'fast' does not actually work that much faster so 'full' is recommended. Additional options will be present in the future for that. 
+- 'fitType' can be either 'full' or 'fast'. 'full' uses the 2D Gausssian fit whereas 'fast' computes 1D slice fits about the cener pixel. Contrary to the name, 'fast' does not actually work that much faster so 'full' is recommended. Additional options will be present in the future for that. 
 
 An additional input is required for Basler data, called sampling Frequency. This is used to calculate the time each frame was taken and defaults to 1Hz if not specified. These are only approximate values and will not be correct if the detector drops frames while recording!
 
