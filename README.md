@@ -69,6 +69,22 @@ Australis = analyzeAndorData(Austalis); % analysis
 ```
 The analysis function runs through a preset list of analysis calculations using default settings. The only input required is the object (i.e. 'Australis'). The output must be specified to update or overwrite parameters in the object' Austalis'. If no output is assigned the result of the funtion will be created in 'ans' just like any other function in Matlab with no specified output variable. 
 
+## Saving a data set
+
+Saving can be done just like any other variable in matlab
+```
+save Australis Australis % saves the variable Australis with the .mat name, 'Australis'
+```
+
+## Loading a data set
+
+Loading can be done just like any other variable in matlab
+```
+load('Australis') 
+```
+The path to the Class files must be in matlabs working directory to load a file correctly. This can be done by running the script add path, or by manually adding '/Volumes/Software/ImageProcessing' for mac and 'S:\ImageProcessing' for windows. 
+
+
 The list of parameters in Andor/Basler is below:
 
 ```
@@ -100,13 +116,39 @@ The list of parameters in Andor/Basler is below:
 
 The default analysis can be overridden by using individual functions:
 
-For a full list of functions see a better README (working on it right now). 
-
-## Saving a data set
-
-Saving can be done just like any other variable in matlab
+Full method list for image processing class. These functions all require objects as inputs and outputs. Some optional inputs 
 ```
-save Australis Australis % saves the variable Australis with the .mat name, 'Australis'
+%=============================================%
+% methods that calculate things using time series data from object %
+function [obj] = calcFrameRate(obj) % reads in a frame, calculates frame rate from time stamp vecotor 
+function [obj] = calcFFT(obj,xdata) % calculates single sided fourier transform. default is y position, xdata will override this 
+function [obj] = calcPSD(obj,xdata) % calculates the power spectral density. default is y position, xdata will override this
+
+%=============================================%
+% methods that calculate image quality data from object %
+function [obj] = calcCircPSF(obj,sigma) %idenitfy psfs with circular core, with a xsigma, ysigma smaller than input sigma. 
+function [obj] = calcWFE(obj) % does nothing right now.
+function [obj] = calcStrehlRatio(obj) % does nothing right now
+function [obj] = calcFiberCoupling(obj) % does nothing right now
+
+%=============================================%
+% methods that calculate statistics data from fitParameters. These will exclude frames with 0 amplitude or bad frame flag 
+function [obj] = calcMean(obj)
+function [obj] = calcRange (obj)
+function [obj] = calcRMS (obj)
+function [obj] = calcDelta(obj) % delta is the radial distance from the mean position in x,y. 
+
+%=============================================%
+% methods that plot data from object
+function psfPlot(obj,data_number)% default data_number is 1. User can specify any of the stored frames instead.
+function histPlot(obj,x,y,stats)% default is to create x and y scatter historgams and stats. User can specify alternative data set
+function FFTPlot(obj) % plots the FFT property in the object
+function PSDPlot(obj) % plots the PSD property in the object
+function inspectFrame(index) % plot any frame from raw data using the frame index
+
+%=============================================%
+% methods to save object%
+function saveToStruct(obj, filename) % save the object as a default matlab structure. This remove the class/object nature from varaible
 ```
 
 ## Authors
