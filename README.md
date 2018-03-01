@@ -60,7 +60,8 @@ The dot notation is useful for checking parameters quickly in the command line o
 
 ## Analysing a data set
 
-Below is a full list of parameter names (most, if not all are populated after running the Andor/Basler function followed by the analysis function. 
+Most, if not all are parameters are populated after running the Andor/Basler function followed by the analysis function. 
+
 ```
 filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\Australis\Australis_1\Spooled files.sifx'
 Australis = Andor(filename,100,5,0,'full'); 
