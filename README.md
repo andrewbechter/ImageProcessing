@@ -9,12 +9,12 @@ For native ANDOR files (.sifx, .sif), the MATLAB SIF reader is required.
 
 The default class constructor methods "Basler" and "Andor" require the directory of the data set for processing. The default mode for data processing will start at the first file/frame and end with the last file/frame. Only the first frame is stored in the object variable to conserve memory. A full 2D Gaussian fit is performed on every frame. 
 
-For BASLER files the filename synatax is as follows:
+For BASLER files the filename syntax is as follows:
 ```
 filename = 'filename = 'P:\iLocater\QuadCell\IR\Set118\'
 labSet = Basler(filename);
 ```
-For ANDOR files the filename synatax is as follows:
+For ANDOR files the filename syntax is as follows:
 ```
 filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\Australis\Australis_1\Spooled files.sifx'
 Australis = Andor(filename);
