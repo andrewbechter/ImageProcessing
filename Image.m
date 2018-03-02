@@ -494,6 +494,7 @@ classdef Image
         %=============================================%
         % interactive filter function%
         function [ry] = ifilter(ix,iy,icenter,iwidth,ishape,imode,ifilt)
+            % Eric push test
             % ifilter(x,y) or ifilter(y) or ifilter([x y]) or
             % ry=ifilter(x,y,center,width,shape,plotmode,filtermode)
             % Keyboard-operated interactive Fourier filter function for
