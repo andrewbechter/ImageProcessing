@@ -1,14 +1,27 @@
 %Process Image Data
-memStep = 10;
+memStep = 1000; % 'first'
 startFile = 1;
 endFile = 0;
 
-% filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\Australis\Australis_1\Spooled files.sifx';
-% set = Andor(filename,memStep,1,100,'full'); % reads in data and populates fundamental object properties
+tic
+filename = 'P:\iLocater\NIC\2017_07_09\SX_fast3\Spooled files.sifx';
+SXFast3 = Andor(filename,memStep,startFile,endFile,'full'); % reads in data and populates fundamental object properties
+toc
+SXFast3 = analyzeAndorData(SXFast3); % reads in data and populates fundamental object properties
+SXFast3.psfPlot
+SXFast3.histPlot
+toc
 
-filename = 'P:\iLocater\QuadCell\IR\Set95\';
-set = Basler(filename,memStep,1,100,'full'); % reads in data and populates fundamental object properties
-set = analyzeBaslerData(set); %calculates standard analysis
-set.psfPlot
-set.histPlot
+
+
+
+
+
+
+
+
+
+
+
+
 

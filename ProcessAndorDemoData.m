@@ -1,7 +1,6 @@
 %MainProcessingScript
 clear
 tic
-
 %function descriptions:
 %name: Andor
 %purpose: grabs a single frame and time stamp
@@ -27,44 +26,74 @@ memStep = 1000;
 startFile = 1;
 endFile = 0;
 
-filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\Australis\Australis_1\Spooled files.sifx';
-Aus1 = Andor(filename,memStep,startFile,endFile,'full'); % reads in data and populates fundamental object properties
-Aus1 = analyzeAndorData(Aus1); %calculates standard analysis
-save Aus1
-clear Aus1 filename
+%=============================================%
+%AUSTRALIS
+% filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\Australis\Australis_1\Spooled files.sifx';
+% Aus1 = Andor(filename,memStep,startFile,endFile,'full'); % reads in data and populates fundamental object properties
+% Aus1 = analyzeAndorData(Aus1); %calculates standard analysis
+% save Aus1 Aus1
+% clear Aus1 filename
+% 
+% filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\Australis\Australis_2\Spooled files.sifx';
+% Aus2 = Andor(filename,memStep,startFile,endFile,'full'); % reads in data and populates fundamental object properties
+% Aus2 = analyzeAndorData(Aus2); %calculates standard analysis
+% save Aus2 Aus2
+% clear Aus2 filename
+% 
+% filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\Australis\Australis_3\Spooled files.sifx';
+% Aus3 = Andor(filename,memStep,startFile,endFile,'full'); % reads in data and populates fundamental object properties
+% Aus3 = analyzeAndorData(Aus3); %calculates standard analysis
+% save Aus3 Aus3
+% clear Aus3 filename
+% 
+% filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\Australis\Australis_4\Spooled files.sifx';
+% Aus4 = Andor(filename,memStep,startFile,endFile,'full'); % reads in data and populates fundamental object properties
+% Aus4 = analyzeAndorData(Aus4); %calculates standard analysis
+% save Aus4 Aus4
+% clear Aus4 filename
+% 
+% filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\Australis\Australis_153_sub\Spooled files.sifx';
+% Aus153 = Andor(filename,memStep,startFile,endFile,'full'); % reads in data and populates fundamental object properties
+% Aus153 = analyzeAndorData(Aus153); %calculates standard analysis
+% save Aus153 Aus153
+% clear Aus153 filename
+% 
+% filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\Australis\Australis_5\Spooled files.sifx';
+% Aus5 = Andor(filename,memStep,startFile,endFile,'full'); % reads in data and populates fundamental object properties
+% Aus5 = analyzeAndorData(Aus5); %calculates standard analysis
+% save Aus5 Aus5
+% clear Aus5 filename
+% 
+% filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\Australis\Australis_6\Spooled files.sifx';
+% Aus6 = Andor(filename,memStep,startFile,endFile,'full'); % reads in data and populates fundamental object properties
+% Aus6 = analyzeAndorData(Aus6); %calculates standard analysis
+% save Aus6 Aus6
+% clear Aus6 filename
 
-filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\Australis\Australis_2\Spooled files.sifx';
-Aus2 = Andor(filename,memStep,startFile,endFile,'full'); % reads in data and populates fundamental object properties
-Aus2 = analyzeAndorData(Aus2); %calculates standard analysis
-save Aus2
-clear Aus2 filename
+%=============================================%
+%72LEO
+% filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\72Leo\72Leo_full\Spooled files.sifx';
+% Leo72Full = Andor(filename,memStep,startFile,endFile,'full'); % reads in data and populates fundamental object properties
+% Leo72Full = analyzeAndorData(Leo72Full); %calculates standard analysis
+% save Leo72Full Leo72Full
+% clear Leo72Full filename
 
-filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\Australis\Australis_3\Spooled files.sifx';
-Aus3 = Andor(filename,memStep,startFile,endFile,'full'); % reads in data and populates fundamental object properties
-Aus3 = analyzeAndorData(Aus3); %calculates standard analysis
-save Aus3
-clear Aus3 filename
+% filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\72Leo\72Leo_sub\Spooled files.sifx';
+% Leo72Sub = Andor(filename,memStep,startFile,endFile,'full'); % reads in data and populates fundamental object properties
+% Leo72Sub = analyzeAndorData(Leo72Sub); %calculates standard analysis
+% save Leo72Sub Leo72Sub
+% clear Leo72Sub filename
 
-filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\Australis\Australis_4\Spooled files.sifx';
-Aus4 = Andor(filename,memStep,startFile,endFile,'full'); % reads in data and populates fundamental object properties
-Aus4 = analyzeAndorData(Aus4); %calculates standard analysis
-save Aus4
-clear Aus4 filename
-
-filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\Australis\Australis_153_sub\Spooled files.sifx';
-Aus153 = Andor(filename,memStep,startFile,endFile,'full'); % reads in data and populates fundamental object properties
-Aus153 = analyzeAndorData(Aus153); %calculates standard analysis
-save Aus153
-clear Aus153 filename
-
-filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\Australis\Australis_5\Spooled files.sifx';
-Aus5 = Andor(filename,memStep,startFile,endFile,'full'); % reads in data and populates fundamental object properties
-Aus5 = analyzeAndorData(Aus5); %calculates standard analysis
-save Aus5
-clear Aus5 filename
-
-filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\Australis\Australis_6\Spooled files.sifx';
-Aus6 = Andor(filename,memStep,startFile,endFile,'full'); % reads in data and populates fundamental object properties
-Aus6 = analyzeAndorData(Aus6); %calculates standard analysis
-save Aus6
-clear Aus6 filename
+%=============================================%
+%KXVIR
+% filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\KXVIR\KXVIR_full\Spooled files.sifx';
+% KXVIRFull = Andor(filename,memStep,startFile,endFile,'full'); % reads in data and populates fundamental object properties
+% KXVIRFull = analyzeAndorData(KXVIRFull); %calculates standard analysis
+% save KXVIRFull KXVIRFull
+% clear KXVIRFull filename
+% 
+% filename = 'P:\iLocater\iLocater_Demonstrator\LBT_Data\Forerunner\2016_04_18\KXVIR\KXVIR_sub\Spooled files.sifx';
+% KXVIRSub = Andor(filename,memStep,startFile,endFile,'full'); % reads in data and populates fundamental object properties
+% KXVIRSub = analyzeAndorData(KXVIRSub); %calculates standard analysis
+% save KXVIRSub KXVIRSub
+% clear KXVIRSub filename

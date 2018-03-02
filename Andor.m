@@ -25,7 +25,7 @@ classdef Andor < Image
                 type = 'fast';
             end
             
-            delta = 50; % sets the frame size for fitting (2*delta)
+            delta = 30; % sets the frame size for fitting (2*delta)
             obj.memoryStep = memoryStep;
             obj.timeUnits = 1e-6; %recorded in microseconds
             obj.filename = andor_file;% stores the filename with the object

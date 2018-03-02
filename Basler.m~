@@ -38,7 +38,7 @@ classdef Basler <Image
             %First get data needed on entire dataSet before reading in each
             %frame individually
             [obj.noFrames,allnames] = Basler.getDataSetInfo(directory); %check set exists, frame dimensions, total number of frames)
-            obj.time = 0:1/fs:(obj.noFrames-1)/fs;% time vector is purely calculated based on sampling frequency (frame rate)
+            obj.time = 0:1/fs:(noFrames-1)/fs;% time vector is purely calculated based on sampling frequency (frame rate)
             obj.frameRate = fs; % attach frame rate in Hz to object. 
             jj = 0;% counter for tracking stored frames
             
