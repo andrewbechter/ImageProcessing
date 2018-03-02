@@ -158,10 +158,10 @@ See also the list of [contributors](https://github.com/your/project/contributors
 
 ## License
 
-N/A
+...
 
 ## Acknowledgments
 
-* Hat tip to anyone who's code was used (Original plotting code, Gaussian 2D, ifilter)
-* Inspiration
-* etc
+* Hat tip to anyone who's code was used...
+* Fourier filter code directly used from T. C. O'Haver (toh@umd.edu),  version 1.5, May, 2007 
+* Plotting inspired by Gero Nootz 2010 Fit 2D gaussian function to data
