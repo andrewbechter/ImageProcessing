@@ -154,7 +154,7 @@ function saveToStruct(obj, filename) % save the object as a default matlab struc
 ## Authors
 * **Andrew Bechter** 
 
-See also the list of [contributors](https://github.com/ImageProcessing/contributors) who participated in this project.
++See also the list of [contributors](https://github.com/andrewbechterImageProcessing/contributors) who participated in this project.
 
 ## License
 
