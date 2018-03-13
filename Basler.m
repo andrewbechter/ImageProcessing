@@ -101,10 +101,10 @@ classdef Basler <Image
                     
                     if(mod(ii,obj.memoryStep) == 0) || ii == 1 % store every nth frame and the 1st one
                         jj = jj+1;
-                        fprintf('%i\n',ii)
+                        %fprintf('%i\n',ii)
                         obj.frame(:,:,jj) = imageData;
                         obj.storedNums(jj) = ii;
-                        obj.cuts(jj,:) = cuts(ii,:);
+                        obj.cuts(jj,:) = cuts(1,:);
                     end
                 end
             end
