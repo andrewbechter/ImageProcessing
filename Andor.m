@@ -1,40 +1,112 @@
 classdef Andor < Image
     properties
         timeZero        % start of data set (may not need to keep this)
+        focal_length    % focal length of the
+        Fnum            % f number
+        pix             % pixel size (meters)
+        gridX           % processed frame grid
+        gridY           % processed frame grid
+        instSR          % instantaneous Strehl Ratio
+        imStack         % stacked images (non centered)
+        r               % 0-centered radius calculated from cenx, ceny
+        drift_x         % mean drift in x and y 
+        drift_y 
+        drift           % rss of x and y (pythagoras)
     end
     
     methods
-        function [obj] = Andor(andor_file,memoryStep,startFrame,endFrame,type) % constructor (fills in field values with default settings)
+        
+        %--------------%
+        % constructor
+        %--------------%
+        
+        function [obj] = Andor(andor_file,opts,memoryStep,startFrame,endFrame,type)
             
             % check the number of input variables and handle missing values
-            if nargin <1
-                disp('you must specify a data path')
-            elseif nargin < 2
-                memoryStep = 0;
-                type = 'fast';
-                endFrame = 0;
-                startFrame = 1;
+            if nargin < 2
+                disp('you must specify a data path and opts')
             elseif nargin < 3
+                memoryStep = 0;
                 type = 'fast';
                 endFrame = 0;
                 startFrame = 1;
             elseif nargin < 4
                 type = 'fast';
                 endFrame = 0;
+                startFrame = 1;
             elseif nargin < 5
+                type = 'fast';
+                endFrame = 0;
+            elseif nargin < 6
                 type = 'fast';
             end
             
-            delta = 30; % sets the frame size for fitting (2*delta)
+            %%----------------------------
+            % Break out processing options
+            %%----------------------------
+            
+            backgroundfile = opts.backgroundfile;
+            
+            trim = opts.trim;
+            
+            fineGrid = opts.fineGrid;
+            
+            fitGrid = opts.fitGrid;
+            
+            srgrid = opts.srgrid;
+            
             obj.memoryStep = memoryStep;
+            
             obj.timeUnits = 1e-6; %recorded in microseconds
+            
             obj.filename = andor_file;% stores the filename with the object
             
-            %First get data needed on entire dataSet before reading in each
-            %frame individually
+            %%----------------------------
+            % Break out optical parameters
+            %%----------------------------
+            
+            lambda = opts.lambda; % wavelegnth in meters
+            
+            focal_length = opts.focal_length; % effective focal length
+            
+            d = opts.d; % beam diameter
+            
+            pix = opts.pix; %pixel size
+            
+            npup = opts.npup; %number of samples across the pupil
+            
+            alpha = opts.alpha; %blocking fraction
+            
+            F = focal_length/d; % compute F/number
+            
+            q = F*lambda/(pix); %samples across PSF
+            
+            [airy] = Image.diffraction_pattern(2*q,lambda,npup,alpha); % compute diffraction pattern
+            
+            [airy] = imresize(airy,0.5);
+            
+            airy = airy./sum(sum(airy));
+            
+            %%--------------------
+            % Initialize variables
+            %%--------------------
+            obj.imStack =[];
+            
+            obj.coAdd=[];
+            
+            %%------------------
+            % Check data set
+            %%------------------
+            
             [signal,obj.noFrames,and_size,width,height] = Andor.getDataSetInfo(andor_file); %check set exists, frame dimensions, total number of frames)
+            
             obj.dimensions = [height,width];  % assign dimensions to object (used for fitting and plotting)
+            
             [obj.timeZero] = Andor.getTimeZero (signal); % get the initial time (used to build computer clock time vector)
+            
+            %%--------------------
+            % Assign set start/end
+            %%--------------------
             
             jj = 0;% counter for tracking stored frames
             
@@ -42,72 +114,223 @@ classdef Andor < Image
                 endFrame = obj.noFrames;
             end
             
+            chk1 = round(0.1*(endFrame-startFrame));
+            chk2 = round(0.5*(endFrame-startFrame));
+            chk3 = round(0.9*(endFrame-startFrame));
+            
+            
+            %%-----------------------
+            % Start processing frames
+            %%-----------------------
+            
             for ii = startFrame:endFrame
                 
-                %read each frame individually
-                %=============================================%
+                if ii == startFrame+chk1
+                    fprintf('Working on frame %i ...10%% done\n',ii)
+                elseif ii == startFrame+chk2
+                    fprintf('Working on frame %i ...50%% done\n',ii)
+                elseif ii == startFrame+chk3
+                    fprintf('Working on frame %i ...90%% done\n',ii)
+                end
+                
+                %%-----------------------------
+                % Read each frame (indiviually)
+                %%-----------------------------
+                
                 %purpose: grabs a single frame and time stamp
                 %inputs: flag, size of linearized frame, frame width, frame height, frame number
                 %outputs: frame, time stamps
-                [imageData,obj.time(ii,:)] = Andor.getFrameInfo(signal,and_size,width,height,ii);
-               
-                %=============================================%
-                %purpose: fastpeak finder and initial guesses for trim and fit
-                %inputs: frame
-                %outputs: initial values format[amp,cenX,sigmaX,cenY,sigmaY,theta,offset];
-                [obj.iVals(ii,:),obj.totalCounts(ii),obj.flag(ii) ] = Image.xcorrFit(imageData);
-                %[iVals(ii,:)] = Andor.coarsefit(imageData);
                 
-                if strcmp(type,'full')==1 && obj.flag(ii) == 0
-                    %=============================================%
-                    %purpose: check boundaries of cuts vs. the edges of frame
-                    %inputs: ycenter, xcenter, psf sigma, dimensions, delta
-                    %outputs: cut locations for frame
-                    [cuts(ii,:)] = Image.findFrameCuts(obj.iVals(ii,4),obj.iVals(ii,2),obj.dimensions,delta);
+                [imageData,obj.time(ii,:)] = Andor.getFrameInfo(signal,and_size,width,height,ii);
+                
+                %%-----------------
+                % Remove background
+                %%-----------------
+                
+                [imageData,obj.medback(ii),obj.sigback(ii)] = Image.subBackground(imageData,backgroundfile);
+                
+                %%----------------
+                % Constuctt Grid
+                %%----------------
+                
+                sizex = size(imageData,2);
+                
+                sizey = size(imageData,1);
+                
+                [X,Y] = meshgrid(1:sizex,1:sizey);
+                
+                trim = min([trim,width,height]);
+                
+                X= Image.pad(X,trim,trim);
+                
+                Y= Image.pad(Y,trim,trim);
+                
+                %%------------------------
+                % Center frames and trim
+                %%------------------------
+                
+                [frame] = Image.pad(imageData,trim,trim);% standard size if frame is larger need offsets in x,y
+                
+                if isempty(obj.imStack) == 1
+                    obj.imStack = frame; % stack and add frames
+                else
+                    obj.imStack = obj.imStack + frame; % stack and add frames
+                end
+                
+                
+                [frame,dx,dy] = Image.centroid_center(frame, 0.1, 5, false); % center image and calculate dx,dy
+                
+                X = X + dx; %adjust grid to account for PSF centering
+                
+                Y = Y + dy; %%adjust grid to account for PSF centering
+                
+                fineGrid = min([fineGrid,width,height]);
+                
+                [frame] = Image.pad(frame,fineGrid,fineGrid);% standard size if frame is larger need offsets in x,y
+                
+                X= Image.pad(X,fineGrid,fineGrid); %trim grid
+                
+                Y= Image.pad(Y,fineGrid,fineGrid); %trim grid
+                
+                if max(max(frame)) < opts.threshold
+                    obj.flag = 1;
                     
-                    %=============================================%
-                    %inputs: ycenter, xcenter, constant sigma, dimensions, delta
-                    %outputs: cut locations for frame
-                    [cutFrame,xdata,flag] = Image.trimFrame(imageData,cuts(ii,:));%trim the frame
+                    obj.fitParameters(ii,:) = [0,0,0,0,0,0,0];
                     
-                    if flag ==1
-                        obj.fitParameters(ii,:) = zeros(1,length(obj.iVals(ii,:)));
-                        obj.flag(ii) = 1;
+                    obj.instSR(ii) = 0;
+                    
+                else
+                    
+                    
+                    if opts.fitPSF
+                        %%------------------------
+                        % Gaussian Fit
+                        %%------------------------
+                        
+                        fitGrid = min([fitGrid,width,height]);
+                        
+                        [fitframe] = Image.pad(frame,fitGrid,fitGrid);% standard size if frame is larger need offsets in x,y
+                        
+                        xdata(:,:,1)= Image.pad(X,fitGrid,fitGrid); %trim grid
+                        
+                        xdata(:,:,2)= Image.pad(Y,fitGrid,fitGrid); %trim grid
+                        
+                        xcen = X(1,ceil(end/2));
+                        
+                        ycen = Y(ceil(end/2), 1);
+                        
+                        sig = size(fitframe)./5;
+                        
+                        amp = max(max(fitframe));
+                        
+                        obj.iVals(ii,:) = [amp,xcen,sig(1),ycen,sig(2),0,0]; %amp,x,y,sigmax,sigmay,theta,offset
+                        
+                        [obj.fitParameters(ii,:)] = Image.subPixelPeakV3(fitframe,obj.iVals(ii,:),0,xdata);% sub pixel fitting
+                    end
+                    
+                    %%--------------------
+                    % Co-Add frames
+                    %%--------------------
+                    
+                    if isempty(obj.coAdd) == 1
+                        obj.coAdd = frame; % stack and add frames
                     else
-                        %=============================================%
-                        %inputs: ycenter, xcenter, constant sigma, dimensions, delta
-                        %outputs: cut locations for frame
-                        [obj.fitParameters(ii,:)] = Image.subPixelPeakV3(cutFrame,obj.iVals(ii,:),0,xdata);% sub pixel fitting
-                    end
-
-                    if(mod(ii,obj.memoryStep) == 0) || ii == 1 % store every nth frame and the 1st one
-                        jj = jj+1;
-                        fprintf('%i\n',ii)
-                        obj.frame(:,:,jj) = imageData;
-                        obj.storedNums(jj) = ii;
-                        obj.cuts(jj,:) = cuts(ii,:);
+                        obj.coAdd = obj.coAdd + frame; % stack and add frames
                     end
                     
+                    if opts.instSR
+                        %%--------------------
+                        % Compute Strehl Ratio
+                        %%--------------------
+                        sr_frame = Image.pad(frame,srgrid,srgrid);
+                        obj.instSR(ii) = Image.calculate_SR(sr_frame,airy,false);
+                    end
+                end
+                %%-------------
+                % Saved Data
+                %%-------------
+                
+                if(mod(ii,obj.memoryStep) == 0) || ii == 1 % store every nth frame and the 1st one
+                    jj = jj+1;
+                    obj.frame(:,:,jj) = frame;
+                    obj.storedNums(jj) = ii;
+                    obj.gridX(:,:,jj) = X;
+                    obj.gridY(:,:,jj) = Y;
                 end
             end
             
             obj.time(:,2) = obj.time(:,2)+ obj.timeZero; % add initial time to matlab time to get the computer time
             
         end
-        %=============================================%
-        % methods that bundle analysis methods %
-        function [obj] = analyzeAndorData(obj)
+        
+        %------------------------------%
+        % methods that bundle analysis
+        %------------------------------%
+        
+        function [obj] = analyzeAndorData(obj,opts)
+            
             [obj] = calcMean(obj);
             [obj] = calcRMS(obj);
             [obj] = calcRange(obj);
             [obj] = calcFrameRate(obj);
+            obj.r = sqrt((obj.fitParameters(:,2)-obj.Mean(2)).^2 + (obj.fitParameters(:,4)-obj.Mean(4)).^2);
             [obj] = calcFFT(obj);
             [obj] = calcPSD(obj);
+            [obj] = calcStrehl(obj,opts);
+            %[obj] = calcCentroidDrift(obj);
+            
         end
+        
         function [obj] = quickAnalyzeAndorData(obj)
-        end        
-        %=============================================%
-        % methods that plot data from object or find frames which can be plotted%
+        end
+        
+        %------------------------------%
+        % Andor Analysis
+        %------------------------------%
+        
+        function [obj] = calcCentroidDrift(obj)
+            %function descriptions:
+            
+            %name: calcCentroidDrift
+            %purpose: linear fit to the x and y centroid 
+            %inputs: ANDOR object
+            %outputs: fit parameters measured in pixels         
+            
+            %%--------------------------
+            % Fit X and Y centroids
+            %%--------------------------
+            
+            x =  obj.fitParameters(:,2);
+            y =  obj.fitParameters(:,4);
+            ind1 = x>mean(x)-3*std(x(1:1000));
+            ind2 = x<mean(x)+3*std(x(1:1000));
+            indx = logical(ind1.*ind2);
+            
+            ind1 = y>mean(y)-3*std(y(1:1000));
+            ind2 = y<mean(y)+3*std(y(1:1000));
+            indy = logical(ind1.*ind2);
+            
+            ind = logical(indx.*indy);
+            x = x(ind);
+            y = y(ind);
+            t =  obj.time(:,1)*1e-6; % convert time into seconds
+            t=t(ind);
+            
+            [px,Sx] = polyfit(t,x,1);
+            [py,Sy] = polyfit(t,y,1);
+            
+            %%--------------------------
+            % Assign to object
+            %%--------------------------
+            
+            obj.drift_x = px(1);
+            obj.drift_y = py(1);
+            obj.drift = sqrt(px(1).^2+py(1).^2);
+            
+        end
+        %-----------------------%
+        % plot data from object
+        %-----------------------%
         function [obj] = inspectFrame(obj,frameNumber)
             [signal,~,and_size,width,height] = Andor.getDataSetInfo(obj.filename);
             [imageData,~] = Andor.getFrameInfo(signal,and_size,width,height,frameNumber);
@@ -115,17 +338,19 @@ classdef Andor < Image
             figure
             imagesc(obj.tempFrame)
         end
+        
     end
-    
     methods(Static)
-        %=============================================%
-        % functions that recover the image and time stamps %
+        %---------------------------------%
+        %Recover the image and time stamps
+        %---------------------------------%
         function [timeZero] = getTimeZero (signal)
             [rc,format_time] = atsif_getpropertyvalue(signal,'FormattedTime');
             frame_info{1,1} = 'Formatted Time';
             frame_info{1,2} = format_time;
             timeZero = datenum(format_time,'ddd mmm dd HH:MM:SS yyyy');
         end
+        
         function [imageData,frame_time] = getFrameInfo(signal,and_size,width,height,frame_number)
             
             timeflag = 0;
@@ -169,8 +394,11 @@ classdef Andor < Image
                 frame_time(1,3) = timeflag;
             end
         end
-        %=============================================%
-        % functions that condition frame for reading in and trimming%
+        
+        %-------------%
+        %Data set info
+        %-------------%
+        
         function [signal,no_frames,and_size,width,height] = getDataSetInfo(andor_file)
             rc=atsif_setfileaccessmode(0);
             rc=atsif_readfromfile(andor_file);
@@ -186,13 +414,15 @@ classdef Andor < Image
                         xaxis=0;
                         width = ((right - left)+1)/hBin;
                         height = ((top-bottom)+1)/vBin;
-                        frame_info = cell(1,2);
                     end
                 end
             end
         end
-        %=============================================%
+        
+        %----------------------------------------------%
         %old function for reading andor data (not used)%
+        %----------------------------------------------%
+        
         function [image_data] = readData(andor_file)
             image_data = [];
             frame_limit = 0; %If 0 or less, reads all frames. Otherwise only reads this many frames
