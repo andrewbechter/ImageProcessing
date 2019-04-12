@@ -1,0 +1,10 @@
+*.mat
+*.dat
+*.fig
+*.png
+*.pdf
+*.db
+*.sif
+*.sifx
+*.fit
+*.fits
