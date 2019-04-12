@@ -34,20 +34,66 @@ classdef Image
     
     methods
         
-        %=============================================%
-        % methods that calculate things using time series data from object %
-        function [obj] = calcFrameRate(obj)
+        %%-------------------
+        % Compute time series 
+        %%-------------------
+        
+        function [obj] = FrameRate(obj)
+            % Computes frame rate from time stamps
+            % [image object] = FRAMERATE(image object)
+            %
+            % Parameters
+            % ----------
+            % obj : image object
+            %   standard image object created using Image class file
+            %
+            % obj.timeUnites : float
+            %   time units ( microseconds etc...)
+            %
+            % obj.time : float
+            %   time stamps
+            %
+            %
+            % Returns
+            % -------
+            % obj : image object
+            %   standard image object created using Image class file
+            %
+            % obj.frameRate : float
+            %   approximate frame per second (FPS)
+            
             obj.frameRate = mean(1./diff(obj.timeUnits.*obj.time(:,1)));
         end
+        
         function [obj] = calcFFT(obj,xdata)
+            % Computes FFT on time series data in image object
+            % [image object] = calcFFT(image object, time series data)
+            %
+            % Parameters
+            % ----------
+            % obj : image object
+            %   standard image object created using Image class file
+            %
+            % xdata : 1 x n array
+            %
+            % Returns
+            % -------
+            % obj : image object
+            %   standard image object created using Image class file
+            %
+            % obj.FFT : n x 2 array
+            %   frequency (:,1) and power spectrum (:,2)
+
             if nargin <2
-                xdata =  obj.fitParameters(:,2);
-%                 xdata =  obj.instSR;
+                xdata =  obj.fitParameters(:,2);  % default time series
+                % xdata =  obj.instSR;
             end
+            
             Fs = obj.frameRate;
             X = xdata;
             Y = fft(X);
             L = length(X);
+            
             % Compute the two-sided spectrum P2. Then compute the single-sided spectrum P1 based on P2 and the even-valued signal length L.
             P2 = abs(Y/L);
             P1 = P2(1:L/2+1);
@@ -55,28 +101,78 @@ classdef Image
             
             % Define the frequency domain f and plot the single-sided amplitude spectrum P1. The amplitudes are not exactly at 0.7 and 1, as expected, because of the added noise. On average, longer signals produce better frequency approximations.
             f = Fs*(0:(L/2))/L;
+            
+            %%---------------------------
+            % Assign parameters to object
+            %%---------------------------
             obj.FFT(:,1) = f;
             obj.FFT(:,2) = P1;
             
         end
+        
         function [obj] = calcPSD(obj,xdata)
+            % Computes PSD on time series data in image object
+            % [image object] = calcPSD(image object, FFT data)
+            %
+            % Parameters
+            % ----------
+            % obj : image object
+            %   standard image object created using Image class file
+            %
+            % xdata : 1 x n array
+            %
+            % Returns
+            % -------
+            % obj : image object
+            %   standard image object created using Image class file
+            %
+            % obj.PSD : n x 2 array
+            %   frequency (:,1) and power spectral density (:,2)
             %see matlab documentation here:
             %https://www.mathworks.com/help/signal/ug/power-spectral-density-estimates-using-fft.html
+            
             if nargin <2
-                xdata =  obj.fitParameters(:,4);
-%                 xdata =  obj.instSR;
+                xdata =  obj.fitParameters(:,2); % default
+                %xdata =  obj.instSR;
             end
+            
             Fs = obj.frameRate;
             N = length(xdata);
             xdft = fft(xdata);
             xdft = xdft(1:N/2+1);
+            
             psdx = (1/(Fs*N)) * abs(xdft).^2; %alternative way (same answer) psdx = (1/(Fs*N)) * abs(xdft).^2;
             psdx(2:end-1) = 2*psdx(2:end-1);
             f = Fs*(0:(N/2))/N; % alternative way (same answer) f2 = 0:Fs/N:Fs/2;
+            
+            %%---------------------------
+            % Assign parameters to object
+            %%---------------------------
+            
             obj.PSD(:,1) = f;
             obj.PSD(:,2) = psdx;
         end
-        function [obj] = filter(obj,xdata)
+        
+        function [obj] = filter(obj,xdata)%(Outdated!)
+            % Creates fouerier filter and filters time series data in image object
+            % 
+            % [image object] = FILTER(image object, time series data)
+            %
+            % Parameters
+            % ----------
+            % obj : image object
+            %   standard image object created using Image class file
+            %
+            % xdata : 1 x n array
+            %
+            % Returns
+            % -------
+            % obj : image object
+            %   standard image object created using Image class file
+            %
+            % obj.filteredData : n x 1 array 
+            %   filtered Data 
+                        
             % Fourier filter function for time-series signal vector y;
             samplingtime = 1./obj.frameRate; % 'samplingtime' is the total duration of sampled signal in sec;
             centerfrequency = 0; % 'centerfrequency' and 'frequencywidth' are the center frequency and width in Hz
@@ -87,12 +183,38 @@ classdef Image
             [obj.filteredData] = FouFilter(xdata,samplingtime,centerfrequency,frequencywidth,shape,mode);
             
         end
-        %=============================================%
-        % methods that calculate image quality data from object %
+        
+        %%-------------------
+        % Image quality 
+        %%-------------------
+        
         function [obj] = calcCircPSF(obj,sigma)
-            % this function finds all the circular PSFs and returns their index in obj.circPSF.
+            % Finds all the circular PSFs and returns their index in obj.circPSF.
+            
+            % Computes frame rate from time stamps
+            % [image object] = CALCCIRCPSF(image object, wdith parameter)
+            %
+            % Parameters
+            % ----------
+            % obj : image object
+            %   standard image object created using Image class file
+            %
+            % sigma : float
+            %   gaussian width parameter
+            %
+            % Returns
+            % -------
+            % obj : image object
+            %   standard image object created using Image class file
+            %
+            % obj.circPSF : int
+            %   index of cicular PSFs  
+            %
+            % Notes
+            % -------
             % So far a sigma value of <5 seems to correlate with a good 'core'
-            % so that is the default setting.
+            % so that is the default setting for demonstrator data. 
+            
             if nargin < 2
                 value = 5;
             else
@@ -101,11 +223,14 @@ classdef Image
             [ind] = find(obj.fitParameters(:,3) < value & obj.fitParameters(:,5) < value & obj.fitParameters(:,1) > 4500);
             obj.circPSF = ind;
         end
+        
         function [obj] = calcFiberCoupling(obj)
         end
+        
         function [obj] = addFrames(obj)
             obj.coAdd = sum(obj.frame,3);
         end
+        
         function [obj] = calcStrehl(obj,opts)
             
             lambda = opts.lambda; % wavelegnth in meters
@@ -123,7 +248,7 @@ classdef Image
             F = focal_length/d; % compute F/number
             
             q = F*lambda/(pix); %samples across PSF
-                        
+            
             [airy] = Image.diffraction_pattern(q,lambda,npup,alpha); % compute diffraction pattern
             
             [airy,~,~] = Image.centroid_center(airy, 0.1, 5, false); % center image and calculate dx,dy
@@ -133,30 +258,39 @@ classdef Image
             %obj.imStack = Image.centroid_center(obj.imStack,0.1,5,false);
             
             %obj.SR_blur = Image.calculate_SR (obj.imStack,airy,false);
-
+            
         end
-        %=============================================%
-        % methods that calculate statistics data from object %
+        
+        %%-------------------
+        % Statistics 
+        %%-------------------
+        
         function [obj] = calcMean (obj)
             a = obj.fitParameters(:,1)~=0;
             obj.Mean = mean(obj.fitParameters(a,:),1); % Mean value of Centroid parameters
         end
+        
         function [obj] = calcRange (obj)
             a = obj.fitParameters(:,1)~=0;
             obj.Range = abs(max(obj.fitParameters(a,:),[],1)-min(obj.fitParameters(a,:),[],1)); % Mean value of Centroid parameters
         end
+        
         function [obj] = calcRMS (obj)
             a = obj.fitParameters(:,1)~=0;
             obj.RMS = std(obj.fitParameters(a,:),1); % RMS value of Centroid parameters
         end
+        
         function [obj] = calcDelta(obj)
             x = abs(obj.fitParameters(:,2)-obj.Mean(:,2)); % absolute value from the mean in x
             y = abs(obj.fitParameters(:,4)-obj.Mean(:,4)); % absolute value from the mean in y
             r = sqrt(x.^2+y.^2); % pythag to find radius
             obj.delta = r; % assign value to obj
         end
-        %=============================================%
-        % methods that plot data from object
+        
+        %%-------------------
+        % Plotting
+        %%-------------------
+        
         function psfPlot(obj,data_number)
             InterpolationMethod = 'nearest'; % 'nearest','linear','spline','cubic'
             if nargin <2
@@ -174,14 +308,14 @@ classdef Image
             x(7) = obj.fitParameters(ii,7); %constant
             dispangle = x(6)*180/pi; % convert rotation angle to degrees
             
-%             if isempty(obj.cuts) == 1
-%                 [X,Y] = meshgrid(1:size(data,2),1:size(data,1));
-%                 Z = data;
-%             else
-%                 cuts = obj.cuts(data_number,:);
-%                 [X,Y] = meshgrid(cuts(1):cuts(2),cuts(3):cuts(4));
-%                 Z = data(cuts(3):cuts(4),cuts(1):cuts(2)); % cut data at the locations corresponding to the chosen frame size.
-%             end
+            %             if isempty(obj.cuts) == 1
+            %                 [X,Y] = meshgrid(1:size(data,2),1:size(data,1));
+            %                 Z = data;
+            %             else
+            %                 cuts = obj.cuts(data_number,:);
+            %                 [X,Y] = meshgrid(cuts(1):cuts(2),cuts(3):cuts(4));
+            %                 Z = data(cuts(3):cuts(4),cuts(1):cuts(2)); % cut data at the locations corresponding to the chosen frame size.
+            %             end
             %figure creation
             
             X = obj.gridX(:,:,data_number);
@@ -256,6 +390,7 @@ classdef Image
             axis off
             
         end
+        
         function histPlot(obj,x,y,stats)
             
             if nargin < 2
@@ -312,6 +447,7 @@ classdef Image
             axis off
             
         end
+        
         function masPlot(obj,x,y,stats)
             
             if nargin < 2
@@ -353,11 +489,11 @@ classdef Image
             alpha(0)
             p1 = subplot(4,4,[5,6,7,9,10,11,13,14,15]);
             plot(x,y,'.','color',[0.3,0.75,0.93])
-%             c = viridis(length(x));
-%             for ii = 1:10:length(x)
-%             plot3(x(ii),y(ii),ii,'.','color',c(ii,:))
-%             hold on
-%             end
+            %             c = viridis(length(x));
+            %             for ii = 1:10:length(x)
+            %             plot3(x(ii),y(ii),ii,'.','color',c(ii,:))
+            %             hold on
+            %             end
             
             xlim([-4*xrms, 4*xrms])
             ylim([-4*yrms, 4*yrms])
@@ -387,6 +523,7 @@ classdef Image
             axis off
             
         end
+        
         function FFTPlot(obj)
             hf = figure();
             set(hf, 'Position', [20 20 1300 350])
@@ -396,6 +533,7 @@ classdef Image
             set(gca,'FontSize',16)
             xlim([0.5 obj.frameRate/2])
         end
+        
         function PSDPlot(obj)
             hf = figure(2);
             hold on
@@ -406,12 +544,16 @@ classdef Image
             set(gca,'FontSize',16)
             xlim([0.5 obj.frameRate/2])
         end
+        
         function sumPlot(obj)
             figure()
             imagesc(obj.coAdd)
         end
-        %=============================================%
-        % methods that plot data from object or find frames which can be plotted%
+        
+        %%-------------------
+        % Checks 
+        %%-------------------
+        
         function [obj] = checkFrame(obj, index)
             %this method is useful for finding examples of frames that
             %meet some condition and are stored (i.e can be viewed). For
@@ -429,8 +571,11 @@ classdef Image
             ind = find(mod(index,obj.memoryStep)==0); % find all frames in circPSF index that are also stored
             obj.exFrames = (index(ind)/obj.memoryStep)+1; % adjust index to be used in psfPlot
         end
-        %=============================================%
-        % methods to save object%
+      
+        %%-------------------
+        % Saving 
+        %%-------------------
+
         function saveToStruct(obj, filename)
             % this function saves the object made from Image class as a
             % standard matlab structure
@@ -447,7 +592,10 @@ classdef Image
     
     methods(Static)
         
-        %=============================================%  
+        %%-------------------
+        % Strehl Ratio 
+        %%-------------------
+        
         function strehl_ratio = calculate_SR (frame,airy,verbose)
             
             %=================================================
@@ -457,12 +605,12 @@ classdef Image
             [num,idx] = max(filt_airy(:));
             
             [airy_x, airy_y] = ind2sub(size(airy), idx);
-                      
+            
             
             %=================================================
             if verbose
-            fprintf( '===============================');
-            fprintf( '\n       Center of unaberated PSF: %d , %d \n', airy_x, airy_y );
+                fprintf( '===============================');
+                fprintf( '\n       Center of unaberated PSF: %d , %d \n', airy_x, airy_y );
             end
             
             %=================================================
@@ -480,9 +628,9 @@ classdef Image
             fitGrid = 3;
             
             sizex = size(sub_airy,2);
-                
+            
             sizey = size(sub_airy,1);
-                
+            
             [X,Y] = meshgrid(1:sizex,1:sizey);
             
             [fitframe] = Image.pad(sub_airy,fitGrid,fitGrid);% standard size if frame is larger need offsets in x,y
@@ -508,8 +656,8 @@ classdef Image
             %=================================================
             % Plot simulated PSF
             if verbose
-            figure;
-            imagesc((sub_airy)./(sum(sum(sub_airy))));
+                figure;
+                imagesc((sub_airy)./(sum(sum(sub_airy))));
             end
             
             filt_frame = medfilt2(frame);
@@ -523,9 +671,9 @@ classdef Image
             %%---------------------------
             
             sizex = size(sub_frame,2);
-                
+            
             sizey = size(sub_frame,1);
-                
+            
             [X,Y] = meshgrid(1:sizex,1:sizey);
             
             [fitframe] = Image.pad(frame,fitGrid,fitGrid);% standard size if frame is larger need offsets in x,y
@@ -559,7 +707,7 @@ classdef Image
                 %sub_frame(sub_frame<0) = 0;
                 figure;
                 imagesc((sub_frame)./(sum(sum(sub_frame))));
-%                 imagesc(log(abs(sub_frame./(sum(sum(sub_frame))))));
+                %                 imagesc(log(abs(sub_frame./(sum(sum(sub_frame))))));
                 
             end
             
@@ -586,25 +734,25 @@ classdef Image
             strehl_ratio = ( max_obs / obs_sum ) * ( unobs_sum / max_unobs ) ;
             
             if verbose
-            %=============================================
-            fprintf( '==========================================================');
-            fprintf( '\n The calculated Strehl ratio is %f  \n', strehl_ratio) ;
-            %=================================================
+                %=============================================
+                fprintf( '==========================================================');
+                fprintf( '\n The calculated Strehl ratio is %f  \n', strehl_ratio) ;
+                %=================================================
             end
-%             phi = sqrt(abs(log(strehl_ratio)))*lambda/1064e-9;
-%             strehl_ratio = exp(-(phi^2));
+            %             phi = sqrt(abs(log(strehl_ratio)))*lambda/1064e-9;
+            %             strehl_ratio = exp(-(phi^2));
             
         end
         
         function [airy] = diffraction_pattern(q,lambda,npup,alpha)
             
-            %%-------------------
+            %---------------------
             % upscale computation
-            %%-------------------
+            %---------------------
             
             q = 2*q; % gives higher sampling
             
-            npup = 2*npup; % keeps grid size same after binning by factor of 2 (factor of 2 is used to generate upscale simluated nyquist PSFs by minimum amount) 
+            npup = 2*npup; % keeps grid size same after binning by factor of 2 (factor of 2 is used to generate upscale simluated nyquist PSFs by minimum amount)
             
             %%-----------------------
             % calculate airy pattern
@@ -636,16 +784,20 @@ classdef Image
             q = 2; % default by 2
             
             [m,n]=size(airy); %M is the original matrix
-
+            
             airy=sum(reshape(airy,p,[]) ,1 );
             
             airy=reshape(airy,m/p,[]).'; %Note transpose
-
+            
             airy=sum(reshape(airy,q,[]) ,1);
             
             airy=reshape(airy,n/q,[]).'; %Note transpose
-
+            
         end
+        
+        %%-------------------
+        % Calibrate
+        %%-------------------
         
         function [frame] = subDark(frame,dark)
             frame = frame - dark;
@@ -707,8 +859,11 @@ classdef Image
             ind =  abs(background-mean(mean(background)))> 3*sigma;
             frame(ind) = mean(mean(frame));
         end
-        %=============================================%
-        % functions that fit image data %
+        
+        %%-------------------
+        % Fitting PSFs 
+        %%-------------------
+        
         function [initialValues,totalCounts,flag] = xcorrFit(frame)
             
             s = size(frame); %find frame dimensions
@@ -858,6 +1013,125 @@ classdef Image
             end
         end
         
+        function [centered_frame, dx, dy] = centroid_center(frame, t, n, verbose)
+            % Iteratively centeres PSF in image grid using fourier shifting
+            % and flux weighted centroid method
+            %
+            % [centered frame, dx, dy] = CENTROID_CENTER(image frame, threshold, iterations, verbose)
+            %
+            % Parameters
+            % ----------
+            % img :PSF image
+            %
+            % threshold : float
+            %   Clipping threshold relative to peak
+            %
+            % niter : int
+            %   Maximum number of iterations to use
+            %
+            % verbose : bool, optional
+            %   If true, print details to the console. Default is false.
+            %
+            % Returns
+            % -------
+            % img_centered : m x n array
+            %   Centered and unit normalized PSF
+            %
+            % dx : float
+            %   Measured x-offset (column offset)
+            %
+            % dy : float
+            %   Measured y-offset (row offset)
+            
+            narginchk(3,4)
+            if nargin < 4
+                verbose = false;
+            end
+            
+            [nrows, ncols] = size(frame);
+            
+            xc = floor(ncols/2) + 1;
+            yc = floor(nrows/2) + 1;
+            
+            centered_frame = frame;
+            
+            dxh=[];
+            dyh=[];
+            
+            for kk = 1:n
+                [xo, yo] = Image.centroid(centered_frame.*(centered_frame>max(centered_frame(:)*t)));
+                
+                dx = xo-xc;
+                dy = yo-yc;
+                
+                dxh = [dxh dx];
+                dyh = [dyh dy];
+                
+                centered_frame = image_shift(centered_frame, -dx, -dy);
+                
+                dr = sqrt(dx.^2 + dy.^2);
+                
+                vprintf(verbose, ' Iter=%d : dx=%5.2f dy=%5.2f (delta_iter=%6.3f)\n',kk,sum(dxh),sum(dyh),dr)
+                
+                if dr<0.001
+                    break;
+                end
+            end
+            
+            dx = sum(dxh);
+            dy = sum(dyh);
+            vprintf(verbose, ' PSF centered to %6.4f pixels.\n',dr)
+            vprintf(verbose, '------------------------------------------------------------\n ')
+            
+        end
+        
+        function [xc, yc] = centroid(frame)
+            % CENTROID computes image centroid location using flux weight
+            % of entire frame
+            % [xc, yc] = CENTROID(img)
+            
+            [rows, cols] = size(frame);
+            
+            xc = floor(cols/2) + 1;
+            yc = floor(rows/2) + 1;
+            
+            m  = sum(sum(frame));
+            
+            if m ~= 0
+                mx = sum(frame)  * (1:cols)';
+                my = sum(frame') * (1:rows)';
+                
+                xc = mx / m;
+                yc = my / m;
+            end
+        end
+                
+        %%-------------------
+        % Condition Image 
+        %%-------------------
+        
+        function [frame,xdata,flag] = trimFrame(frame,cuts)
+            [X,Y] = meshgrid(cuts(1):cuts(2),cuts(3):cuts(4));
+            % Meshgrid steps over '0' which makes the frame 1 pixel larger than
+            % desired. Truncates to correct size. Offsets all frame values (i.e pixels)
+            % to be centered at location of PSF - represents the actual detector location
+            xdata(:,:,1) = X; %layer 1 is X search space
+            xdata(:,:,2) = Y; %layer 2 is Y search space
+            
+            Top = Y(1,1);
+            Bot = Y(end,1);
+            Left = X(1,1);
+            Right = X(1,end);
+            
+            %%%%%%%%%%%----------------------remove bad frames----------------------%%%%%%%%%%%
+            flag = 0; % error check
+            if(Bot > size(frame,1) || Top < 1  || Left < 1 || Right > size(frame,2))
+                flag = 1;
+            else
+                frame = frame(cuts(3):cuts(4),cuts(1):cuts(2)); % cut data at the locations corresponding to the chosen frame size.
+            end
+        end
+        
         function [out] = pad(in,npix_rows,npix_cols)
             % PAD zero-pads input matrix to size npix by npix or cuts down to size\
             %
@@ -926,139 +1200,10 @@ classdef Image
             out(oy1:oy2, ox1:ox2)  = in(iy1:iy2, ix1:ix2);
         end
         
-        function [img_centered, dx, dy] = centroid_center(img, threshold, niter, verbose)
-% center iteratively centers a PSF image using centroids
-%
-% [img_centered, dx, dy] = CENTROID_CENTER(img, threshold, niter, verbose*)
-%
-% Parameters
-% ----------
-% img : m x n array
-%   PSF image
-%
-% threshold : float
-%   Clipping threshold relative to peak
-%
-% niter : int
-%   Maximum number of iterations to use
-%
-% verbose : bool, optional
-%   If true, print details to the console. Default is false.
-%
-% Returns
-% -------
-% img_centered : m x n array
-%   Centered and unit normalized PSF
-%
-% dx : float
-%   Measured x-offset (column offset)
-%
-% dy : float
-%   Measured y-offset (row offset)
-%
-
-narginchk(3,4)
-if nargin < 4
-    verbose = false;
-end
-
-[nrows, ncols] = size(img);
-
-xc = floor(ncols/2) + 1;
-yc = floor(nrows/2) + 1;
-
-img_centered = img;
-
-dxh=[];
-dyh=[];
-
-for kk = 1:niter
-    [xo, yo] = Image.centroid(img_centered.*(img_centered>max(img_centered(:)*threshold)));
-    
-    dx = xo-xc;
-    dy = yo-yc;
-    
-    dxh = [dxh dx];
-    dyh = [dyh dy];
-    
-    img_centered = image_shift(img_centered, -dx, -dy);
-    
-    dr = sqrt(dx.^2 + dy.^2);
-    
-    vprintf(verbose, ' Iter=%d : dx=%5.2f dy=%5.2f (delta_iter=%6.3f)\n',kk,sum(dxh),sum(dyh),dr)
-    
-    if dr<0.001
-        break;
-    end
-end
-
-dx = sum(dxh);
-dy = sum(dyh);
-vprintf(verbose, ' PSF centered to within %6.4f pixels.\n',dr)
-vprintf(verbose, '------------------------------------------------------------\n ')
-
-        end
+        %%-------------------
+        % Interactive filter 
+        %%-------------------
         
-        function [xc, yc] = centroid(img)
-            % CENTROID computes image centroid location
-            %
-            % [xc, yc] = CENTROID(img)
-            %
-            % Parameters
-            % ----------
-            % img : m x n array
-            %   Image
-            %
-            % Returns
-            % -------
-            % x : float
-            %   x centroid (column)
-            %
-            % y : float
-            %   y centroid (row)
-            %
-            
-            [rows, cols] = size(img);
-            
-            xc = floor(cols/2) + 1;
-            yc = floor(rows/2) + 1;
-            
-            m  = sum(sum(img));
-            
-            if m ~= 0
-                mx = sum(img)  * (1:cols)';
-                my = sum(img') * (1:rows)';
-                
-                xc = mx / m;
-                yc = my / m;
-            end
-        end
-        
-        %=============================================%
-        % functions that condition frame for reading in and trimming%
-        function [frame,xdata,flag] = trimFrame(frame,cuts)
-            [X,Y] = meshgrid(cuts(1):cuts(2),cuts(3):cuts(4));
-            % Meshgrid steps over '0' which makes the frame 1 pixel larger than
-            % desired. Truncates to correct size. Offsets all frame values (i.e pixels)
-            % to be centered at location of PSF - represents the actual detector location
-            xdata(:,:,1) = X; %layer 1 is X search space
-            xdata(:,:,2) = Y; %layer 2 is Y search space
-            
-            Top = Y(1,1);
-            Bot = Y(end,1);
-            Left = X(1,1);
-            Right = X(1,end);
-            
-            %%%%%%%%%%%----------------------remove bad frames----------------------%%%%%%%%%%%
-            flag = 0; % error check
-            if(Bot > size(frame,1) || Top < 1  || Left < 1 || Right > size(frame,2))
-                flag = 1;
-            else
-                frame = frame(cuts(3):cuts(4),cuts(1):cuts(2)); % cut data at the locations corresponding to the chosen frame size.
-            end
-        end
-        %=============================================%
-        % interactive filter function%
         function [ry] = ifilter(ix,iy,icenter,iwidth,ishape,imode,ifilt)
             % Eric push test
             % ifilter(x,y) or ifilter(y) or ifilter([x y]) or
@@ -1172,6 +1317,10 @@ vprintf(verbose, '------------------------------------------------------------\n
 end
 
 % ----------------------------SUBFUNCTIONS--------------------------------
+
+%%----------------
+% FOURIER FILTER 
+%%----------------
 function ReadKey(obj,eventdata)
 % Interprets key presses from the Figure window.
 % When a key is pressed, interprets key and calls corresponding function.
@@ -1458,6 +1607,55 @@ end
 function r = range(arr)
 r = max(arr) - min(arr);
 end
+function [ry]=FouFilter(y,samplingtime,centerfrequency,frequencywidth,shape,mode)
+% Fourier filter function for time-series signal vector y; 'samplingtime'
+% is the total duration of sampled signal in sec, millisec, or microsec;
+% 'centerfrequency' and 'frequencywidth' are the center frequency and width
+% of the filter in Hz, KHz, or MHz, respectively; 'Shape' determines the
+% sharpness of the cut-off. If shape = 1, the filter is Gaussian; as
+% shape increases the filter shape becomes more and more rectangular.
+% Set mode = 0 for band-pass filter, mode = 1 for band-reject (notch) filter.
+% FouFilter returns the filtered signal.
+%
+% Example: Sine wave in noisy background.
+% First half is just noise; sine wave starts halfway through.
+% xx=[0:.001:2*pi]';
+% signal=sin(20*xx);
+% noise=randn(size(xx));
+% x=1:2*length(xx)';
+% y=[noise;signal+noise]; % sine wave is added halfway through.
+% SignalToNoiseRatio=std(signal)/std(noise)
+% FilteredSignal=foufilter(y',1,20,100,5,0);
+% subplot(2,1,1)
+% plot(x,y);
+% title('First half is just noise; sine wave starts halfway through')
+% subplot(2,1,2)
+% plot(x,FilteredSignal);
+% title('Signal filtered with FouFilter.m')
+%
+%  T. C. O'Haver (toh@umd.edu),  version 1.5, May, 2007
+
+center=centerfrequency*samplingtime; %  center harmonic (fourier component)
+width=frequencywidth*samplingtime; %  width of filter (in harmonics)
+
+fy=fft(y); % Fourier transform of signal
+lft1=[1:(length(fy)/2)];
+lft2=[(length(fy)/2+1):length(fy)];
+% Compute filter shape
+ffilter1=ngaussian(lft1,center+1,width,shape);
+ffilter2=ngaussian(lft2,length(fy)-center+1,width,shape);
+ffilter=[ffilter1,ffilter2];
+if mode==1,
+    ffilter=1-ffilter;
+end
+if length(fy)>length(ffilter), ffilter=[ffilter ffilter(1)];end
+ffy=fy.*ffilter;  % Multiply filter by Fourier transform of signal
+ry=real(ifft(ffy)); % Recover filter signal from Fourier transform
+end
+
+%%---------------
+% MATH FUNCTIONS 
+%%---------------
 function F = D2GaussFunction(x,xdata)
 % x(1) = 1/sqrt(2*pi*x(3)*x(4));
 F = x(7)+ x(1)*exp( -((xdata(:,:,1)-x(2)).^2/(2*x(3)^2) + (xdata(:,:,2)-x(4)).^2/(2*x(5)^2) ));
@@ -1521,6 +1719,58 @@ F =exp(-1./(2.).* ((X-X0).^2./SigmaX.^2 +(Y-Y0).^2./SigmaY.^2));
 %    F = Norm.*F./sumnd(F);
 % end
 end
+function g = ngaussian(x,pos,wid,n)
+%  ngaussian(x,pos,wid) = peak centered on x=pos, half-width=wid
+%  x may be scalar, vector, or matrix, pos and wid both scalar
+%  Shape is Gaussian when n=1, becomes more rectangular as n increases.
+% Example: ngaussian([1 2 3],1,2,1) gives result [1.0000    0.5000    0.0625]
+g = exp(-((x-pos)./(0.6005615.*wid)) .^(2*round(n)));
+end
+function C = circ(N,R)
+C = zeros(N);
+
+[X,Y] = meshgrid(-N/2:N/2-1,-N/2:N/2-1);
+
+X = X+0.5; Y=Y+0.5;
+
+Z = sqrt(X.^2 + Y.^2);
+
+C(Z<R) = 1;
+
+end
+function [b,bsig] = back(frame)
+
+imageSizeX = size(frame,2); % size of frame cols
+
+imageSizeY = size(frame,1); % size of frame rows
+
+[columnsInImage, rowsInImage] = meshgrid(1:imageSizeX, 1:imageSizeY);
+
+% Next create the apreture circle in the image.
+
+centerX = imageSizeX/2;
+
+centerY = imageSizeY/2;
+
+innerRadius = imageSizeX/3;
+
+outerRadius = imageSizeX/2;
+
+array2D = (rowsInImage - centerY).^2 ...
+    + (columnsInImage - centerX).^2;
+
+ringPixels = array2D >= innerRadius.^2 & array2D <= outerRadius.^2;
+% ringPixels is a 2D "logical" array.
+
+b = mean(frame(ringPixels));
+
+bsig = std(frame(ringPixels));
+
+end
+
+%%-----------------
+% FOURIER TRANSFORM
+%%-----------------
 function c = xcorr2_fft(a,b)
 %XCORR2_FFT Two-dimensional cross-correlation evaluated with FFT algorithm.
 %   XCORR2_FFT(A,B) computes the cross-correlation of matrices A and B.
@@ -1566,58 +1816,6 @@ ffta = fft2(apad);
 fftb = fft2(bpad);
 c = real(ifft2(ffta.*fftb));
 end
-function [ry]=FouFilter(y,samplingtime,centerfrequency,frequencywidth,shape,mode)
-% Fourier filter function for time-series signal vector y; 'samplingtime'
-% is the total duration of sampled signal in sec, millisec, or microsec;
-% 'centerfrequency' and 'frequencywidth' are the center frequency and width
-% of the filter in Hz, KHz, or MHz, respectively; 'Shape' determines the
-% sharpness of the cut-off. If shape = 1, the filter is Gaussian; as
-% shape increases the filter shape becomes more and more rectangular.
-% Set mode = 0 for band-pass filter, mode = 1 for band-reject (notch) filter.
-% FouFilter returns the filtered signal.
-%
-% Example: Sine wave in noisy background.
-% First half is just noise; sine wave starts halfway through.
-% xx=[0:.001:2*pi]';
-% signal=sin(20*xx);
-% noise=randn(size(xx));
-% x=1:2*length(xx)';
-% y=[noise;signal+noise]; % sine wave is added halfway through.
-% SignalToNoiseRatio=std(signal)/std(noise)
-% FilteredSignal=foufilter(y',1,20,100,5,0);
-% subplot(2,1,1)
-% plot(x,y);
-% title('First half is just noise; sine wave starts halfway through')
-% subplot(2,1,2)
-% plot(x,FilteredSignal);
-% title('Signal filtered with FouFilter.m')
-%
-%  T. C. O'Haver (toh@umd.edu),  version 1.5, May, 2007
-
-center=centerfrequency*samplingtime; %  center harmonic (fourier component)
-width=frequencywidth*samplingtime; %  width of filter (in harmonics)
-
-fy=fft(y); % Fourier transform of signal
-lft1=[1:(length(fy)/2)];
-lft2=[(length(fy)/2+1):length(fy)];
-% Compute filter shape
-ffilter1=ngaussian(lft1,center+1,width,shape);
-ffilter2=ngaussian(lft2,length(fy)-center+1,width,shape);
-ffilter=[ffilter1,ffilter2];
-if mode==1,
-    ffilter=1-ffilter;
-end
-if length(fy)>length(ffilter), ffilter=[ffilter ffilter(1)];end
-ffy=fy.*ffilter;  % Multiply filter by Fourier transform of signal
-ry=real(ifft(ffy)); % Recover filter signal from Fourier transform
-end
-function g = ngaussian(x,pos,wid,n)
-%  ngaussian(x,pos,wid) = peak centered on x=pos, half-width=wid
-%  x may be scalar, vector, or matrix, pos and wid both scalar
-%  Shape is Gaussian when n=1, becomes more rectangular as n increases.
-% Example: ngaussian([1 2 3],1,2,1) gives result [1.0000    0.5000    0.0625]
-g = exp(-((x-pos)./(0.6005615.*wid)) .^(2*round(n)));
-end
 function [psf] = opd2psf(pupil,opd,lambda)
 
 P = pupil .* exp(i * 2*pi/lambda * opd);
@@ -1629,50 +1827,8 @@ psf = psf .* conj(psf);
 psf = psf ./ sum(psf(:));
 
 end
-function C = circ(N,R)
-C = zeros(N);
-
-[X,Y] = meshgrid(-N/2:N/2-1,-N/2:N/2-1);
-
-X = X+0.5; Y=Y+0.5;
-
-Z = sqrt(X.^2 + Y.^2);
-
-C(Z<R) = 1;
-
-end
-function [b,bsig] = back(frame)
-
-imageSizeX = size(frame,2); % size of frame cols
-
-imageSizeY = size(frame,1); % size of frame rows
-
-[columnsInImage, rowsInImage] = meshgrid(1:imageSizeX, 1:imageSizeY);
-
-% Next create the apreture circle in the image.
-
-centerX = imageSizeX/2;
-
-centerY = imageSizeY/2;
-
-innerRadius = imageSizeX/3;
-
-outerRadius = imageSizeX/2;
-
-array2D = (rowsInImage - centerY).^2 ...
-    + (columnsInImage - centerX).^2;
-
-ringPixels = array2D >= innerRadius.^2 & array2D <= outerRadius.^2;
-% ringPixels is a 2D "logical" array.
-
-b = mean(frame(ringPixels));
-
-bsig = std(frame(ringPixels));
-
-end
-
 function result = image_shift(image,dx,dy,complex)
-% IMAGE_SHIFT shifts an image via FFT 
+% IMAGE_SHIFT shifts an image via FFT
 %
 % result = IMAGE_SHIFT(image,dx,dy,complex)
 %
@@ -1737,7 +1893,7 @@ for k=1:N
     px = -2*pi*(X)/n * dx(k);
     py = -2*pi*(Y)/m * dy(k);
     
-    T = T + exp(1i * (px + py));    
+    T = T + exp(1i * (px + py));
 end
 
 %I = I .* T;
@@ -1771,278 +1927,283 @@ if verbose
     fprintf(varargin{:})
 end
 end
+
+%%-----------------
+% COLOR MAPS
+%%-----------------
+
 function C = viridis(N)
 %VIRIDIS Blue-green-yellow colour map
-%   VIRIDIS(N) returns an N-by-3 matrix containing a colormap. 
+%   VIRIDIS(N) returns an N-by-3 matrix containing a colormap.
 %   The colors begin with dark purplish-blue and blue, range
-%   through green and end with yellow. 
-%   
+%   through green and end with yellow.
+%
 %   VIRIDIS is the new default colormap for matplotlib
-%  
+%
 % Created by Ed Hawkins (@ed_hawkins) and Kevin Anchukaitis
 
 viridi = [
-0.26700401  0.00487433  0.32941519
-0.26851048  0.00960483  0.33542652
-0.26994384  0.01462494  0.34137895
-0.27130489  0.01994186  0.34726862
-0.27259384  0.02556309  0.35309303
-0.27380934  0.03149748  0.35885256
-0.27495242  0.03775181  0.36454323
-0.27602238  0.04416723  0.37016418
-0.2770184   0.05034437  0.37571452
-0.27794143  0.05632444  0.38119074
-0.27879067  0.06214536  0.38659204
-0.2795655   0.06783587  0.39191723
-0.28026658  0.07341724  0.39716349
-0.28089358  0.07890703  0.40232944
-0.28144581  0.0843197   0.40741404
-0.28192358  0.08966622  0.41241521
-0.28232739  0.09495545  0.41733086
-0.28265633  0.10019576  0.42216032
-0.28291049  0.10539345  0.42690202
-0.28309095  0.11055307  0.43155375
-0.28319704  0.11567966  0.43611482
-0.28322882  0.12077701  0.44058404
-0.28318684  0.12584799  0.44496   
-0.283072    0.13089477  0.44924127
-0.28288389  0.13592005  0.45342734
-0.28262297  0.14092556  0.45751726
-0.28229037  0.14591233  0.46150995
-0.28188676  0.15088147  0.46540474
-0.28141228  0.15583425  0.46920128
-0.28086773  0.16077132  0.47289909
-0.28025468  0.16569272  0.47649762
-0.27957399  0.17059884  0.47999675
-0.27882618  0.1754902   0.48339654
-0.27801236  0.18036684  0.48669702
-0.27713437  0.18522836  0.48989831
-0.27619376  0.19007447  0.49300074
-0.27519116  0.1949054   0.49600488
-0.27412802  0.19972086  0.49891131
-0.27300596  0.20452049  0.50172076
-0.27182812  0.20930306  0.50443413
-0.27059473  0.21406899  0.50705243
-0.26930756  0.21881782  0.50957678
-0.26796846  0.22354911  0.5120084 
-0.26657984  0.2282621   0.5143487 
-0.2651445   0.23295593  0.5165993 
-0.2636632   0.23763078  0.51876163
-0.26213801  0.24228619  0.52083736
-0.26057103  0.2469217   0.52282822
-0.25896451  0.25153685  0.52473609
-0.25732244  0.2561304   0.52656332
-0.25564519  0.26070284  0.52831152
-0.25393498  0.26525384  0.52998273
-0.25219404  0.26978306  0.53157905
-0.25042462  0.27429024  0.53310261
-0.24862899  0.27877509  0.53455561
-0.2468114   0.28323662  0.53594093
-0.24497208  0.28767547  0.53726018
-0.24311324  0.29209154  0.53851561
-0.24123708  0.29648471  0.53970946
-0.23934575  0.30085494  0.54084398
-0.23744138  0.30520222  0.5419214 
-0.23552606  0.30952657  0.54294396
-0.23360277  0.31382773  0.54391424
-0.2316735   0.3181058   0.54483444
-0.22973926  0.32236127  0.54570633
-0.22780192  0.32659432  0.546532  
-0.2258633   0.33080515  0.54731353
-0.22392515  0.334994    0.54805291
-0.22198915  0.33916114  0.54875211
-0.22005691  0.34330688  0.54941304
-0.21812995  0.34743154  0.55003755
-0.21620971  0.35153548  0.55062743
-0.21429757  0.35561907  0.5511844 
-0.21239477  0.35968273  0.55171011
-0.2105031   0.36372671  0.55220646
-0.20862342  0.36775151  0.55267486
-0.20675628  0.37175775  0.55311653
-0.20490257  0.37574589  0.55353282
-0.20306309  0.37971644  0.55392505
-0.20123854  0.38366989  0.55429441
-0.1994295   0.38760678  0.55464205
-0.1976365   0.39152762  0.55496905
-0.19585993  0.39543297  0.55527637
-0.19410009  0.39932336  0.55556494
-0.19235719  0.40319934  0.55583559
-0.19063135  0.40706148  0.55608907
-0.18892259  0.41091033  0.55632606
-0.18723083  0.41474645  0.55654717
-0.18555593  0.4185704   0.55675292
-0.18389763  0.42238275  0.55694377
-0.18225561  0.42618405  0.5571201 
-0.18062949  0.42997486  0.55728221
-0.17901879  0.43375572  0.55743035
-0.17742298  0.4375272   0.55756466
-0.17584148  0.44128981  0.55768526
-0.17427363  0.4450441   0.55779216
-0.17271876  0.4487906   0.55788532
-0.17117615  0.4525298   0.55796464
-0.16964573  0.45626209  0.55803034
-0.16812641  0.45998802  0.55808199
-0.1666171   0.46370813  0.55811913
-0.16511703  0.4674229   0.55814141
-0.16362543  0.47113278  0.55814842
-0.16214155  0.47483821  0.55813967
-0.16066467  0.47853961  0.55811466
-0.15919413  0.4822374   0.5580728 
-0.15772933  0.48593197  0.55801347
-0.15626973  0.4896237   0.557936  
-0.15481488  0.49331293  0.55783967
-0.15336445  0.49700003  0.55772371
-0.1519182   0.50068529  0.55758733
-0.15047605  0.50436904  0.55742968
-0.14903918  0.50805136  0.5572505 
-0.14760731  0.51173263  0.55704861
-0.14618026  0.51541316  0.55682271
-0.14475863  0.51909319  0.55657181
-0.14334327  0.52277292  0.55629491
-0.14193527  0.52645254  0.55599097
-0.14053599  0.53013219  0.55565893
-0.13914708  0.53381201  0.55529773
-0.13777048  0.53749213  0.55490625
-0.1364085   0.54117264  0.55448339
-0.13506561  0.54485335  0.55402906
-0.13374299  0.54853458  0.55354108
-0.13244401  0.55221637  0.55301828
-0.13117249  0.55589872  0.55245948
-0.1299327   0.55958162  0.55186354
-0.12872938  0.56326503  0.55122927
-0.12756771  0.56694891  0.55055551
-0.12645338  0.57063316  0.5498411 
-0.12539383  0.57431754  0.54908564
-0.12439474  0.57800205  0.5482874 
-0.12346281  0.58168661  0.54744498
-0.12260562  0.58537105  0.54655722
-0.12183122  0.58905521  0.54562298
-0.12114807  0.59273889  0.54464114
-0.12056501  0.59642187  0.54361058
-0.12009154  0.60010387  0.54253043
-0.11973756  0.60378459  0.54139999
-0.11951163  0.60746388  0.54021751
-0.11942341  0.61114146  0.53898192
-0.11948255  0.61481702  0.53769219
-0.11969858  0.61849025  0.53634733
-0.12008079  0.62216081  0.53494633
-0.12063824  0.62582833  0.53348834
-0.12137972  0.62949242  0.53197275
-0.12231244  0.63315277  0.53039808
-0.12344358  0.63680899  0.52876343
-0.12477953  0.64046069  0.52706792
-0.12632581  0.64410744  0.52531069
-0.12808703  0.64774881  0.52349092
-0.13006688  0.65138436  0.52160791
-0.13226797  0.65501363  0.51966086
-0.13469183  0.65863619  0.5176488 
-0.13733921  0.66225157  0.51557101
-0.14020991  0.66585927  0.5134268 
-0.14330291  0.66945881  0.51121549
-0.1466164   0.67304968  0.50893644
-0.15014782  0.67663139  0.5065889 
-0.15389405  0.68020343  0.50417217
-0.15785146  0.68376525  0.50168574
-0.16201598  0.68731632  0.49912906
-0.1663832   0.69085611  0.49650163
-0.1709484   0.69438405  0.49380294
-0.17570671  0.6978996   0.49103252
-0.18065314  0.70140222  0.48818938
-0.18578266  0.70489133  0.48527326
-0.19109018  0.70836635  0.48228395
-0.19657063  0.71182668  0.47922108
-0.20221902  0.71527175  0.47608431
-0.20803045  0.71870095  0.4728733 
-0.21400015  0.72211371  0.46958774
-0.22012381  0.72550945  0.46622638
-0.2263969   0.72888753  0.46278934
-0.23281498  0.73224735  0.45927675
-0.2393739   0.73558828  0.45568838
-0.24606968  0.73890972  0.45202405
-0.25289851  0.74221104  0.44828355
-0.25985676  0.74549162  0.44446673
-0.26694127  0.74875084  0.44057284
-0.27414922  0.75198807  0.4366009 
-0.28147681  0.75520266  0.43255207
-0.28892102  0.75839399  0.42842626
-0.29647899  0.76156142  0.42422341
-0.30414796  0.76470433  0.41994346
-0.31192534  0.76782207  0.41558638
-0.3198086   0.77091403  0.41115215
-0.3277958   0.77397953  0.40664011
-0.33588539  0.7770179   0.40204917
-0.34407411  0.78002855  0.39738103
-0.35235985  0.78301086  0.39263579
-0.36074053  0.78596419  0.38781353
-0.3692142   0.78888793  0.38291438
-0.37777892  0.79178146  0.3779385 
-0.38643282  0.79464415  0.37288606
-0.39517408  0.79747541  0.36775726
-0.40400101  0.80027461  0.36255223
-0.4129135   0.80304099  0.35726893
-0.42190813  0.80577412  0.35191009
-0.43098317  0.80847343  0.34647607
-0.44013691  0.81113836  0.3409673 
-0.44936763  0.81376835  0.33538426
-0.45867362  0.81636288  0.32972749
-0.46805314  0.81892143  0.32399761
-0.47750446  0.82144351  0.31819529
-0.4870258   0.82392862  0.31232133
-0.49661536  0.82637633  0.30637661
-0.5062713   0.82878621  0.30036211
-0.51599182  0.83115784  0.29427888
-0.52577622  0.83349064  0.2881265 
-0.5356211   0.83578452  0.28190832
-0.5455244   0.83803918  0.27562602
-0.55548397  0.84025437  0.26928147
-0.5654976   0.8424299   0.26287683
-0.57556297  0.84456561  0.25641457
-0.58567772  0.84666139  0.24989748
-0.59583934  0.84871722  0.24332878
-0.60604528  0.8507331   0.23671214
-0.61629283  0.85270912  0.23005179
-0.62657923  0.85464543  0.22335258
-0.63690157  0.85654226  0.21662012
-0.64725685  0.85839991  0.20986086
-0.65764197  0.86021878  0.20308229
-0.66805369  0.86199932  0.19629307
-0.67848868  0.86374211  0.18950326
-0.68894351  0.86544779  0.18272455
-0.69941463  0.86711711  0.17597055
-0.70989842  0.86875092  0.16925712
-0.72039115  0.87035015  0.16260273
-0.73088902  0.87191584  0.15602894
-0.74138803  0.87344918  0.14956101
-0.75188414  0.87495143  0.14322828
-0.76237342  0.87642392  0.13706449
-0.77285183  0.87786808  0.13110864
-0.78331535  0.87928545  0.12540538
-0.79375994  0.88067763  0.12000532
-0.80418159  0.88204632  0.11496505
-0.81457634  0.88339329  0.11034678
-0.82494028  0.88472036  0.10621724
-0.83526959  0.88602943  0.1026459 
-0.84556056  0.88732243  0.09970219
-0.8558096   0.88860134  0.09745186
-0.86601325  0.88986815  0.09595277
-0.87616824  0.89112487  0.09525046
-0.88627146  0.89237353  0.09537439
-0.89632002  0.89361614  0.09633538
-0.90631121  0.89485467  0.09812496
-0.91624212  0.89609127  0.1007168 
-0.92610579  0.89732977  0.10407067
-0.93590444  0.8985704   0.10813094
-0.94563626  0.899815    0.11283773
-0.95529972  0.90106534  0.11812832
-0.96489353  0.90232311  0.12394051
-0.97441665  0.90358991  0.13021494
-0.98386829  0.90486726  0.13689671
-0.99324789  0.90615657  0.1439362];
+    0.26700401  0.00487433  0.32941519
+    0.26851048  0.00960483  0.33542652
+    0.26994384  0.01462494  0.34137895
+    0.27130489  0.01994186  0.34726862
+    0.27259384  0.02556309  0.35309303
+    0.27380934  0.03149748  0.35885256
+    0.27495242  0.03775181  0.36454323
+    0.27602238  0.04416723  0.37016418
+    0.2770184   0.05034437  0.37571452
+    0.27794143  0.05632444  0.38119074
+    0.27879067  0.06214536  0.38659204
+    0.2795655   0.06783587  0.39191723
+    0.28026658  0.07341724  0.39716349
+    0.28089358  0.07890703  0.40232944
+    0.28144581  0.0843197   0.40741404
+    0.28192358  0.08966622  0.41241521
+    0.28232739  0.09495545  0.41733086
+    0.28265633  0.10019576  0.42216032
+    0.28291049  0.10539345  0.42690202
+    0.28309095  0.11055307  0.43155375
+    0.28319704  0.11567966  0.43611482
+    0.28322882  0.12077701  0.44058404
+    0.28318684  0.12584799  0.44496
+    0.283072    0.13089477  0.44924127
+    0.28288389  0.13592005  0.45342734
+    0.28262297  0.14092556  0.45751726
+    0.28229037  0.14591233  0.46150995
+    0.28188676  0.15088147  0.46540474
+    0.28141228  0.15583425  0.46920128
+    0.28086773  0.16077132  0.47289909
+    0.28025468  0.16569272  0.47649762
+    0.27957399  0.17059884  0.47999675
+    0.27882618  0.1754902   0.48339654
+    0.27801236  0.18036684  0.48669702
+    0.27713437  0.18522836  0.48989831
+    0.27619376  0.19007447  0.49300074
+    0.27519116  0.1949054   0.49600488
+    0.27412802  0.19972086  0.49891131
+    0.27300596  0.20452049  0.50172076
+    0.27182812  0.20930306  0.50443413
+    0.27059473  0.21406899  0.50705243
+    0.26930756  0.21881782  0.50957678
+    0.26796846  0.22354911  0.5120084
+    0.26657984  0.2282621   0.5143487
+    0.2651445   0.23295593  0.5165993
+    0.2636632   0.23763078  0.51876163
+    0.26213801  0.24228619  0.52083736
+    0.26057103  0.2469217   0.52282822
+    0.25896451  0.25153685  0.52473609
+    0.25732244  0.2561304   0.52656332
+    0.25564519  0.26070284  0.52831152
+    0.25393498  0.26525384  0.52998273
+    0.25219404  0.26978306  0.53157905
+    0.25042462  0.27429024  0.53310261
+    0.24862899  0.27877509  0.53455561
+    0.2468114   0.28323662  0.53594093
+    0.24497208  0.28767547  0.53726018
+    0.24311324  0.29209154  0.53851561
+    0.24123708  0.29648471  0.53970946
+    0.23934575  0.30085494  0.54084398
+    0.23744138  0.30520222  0.5419214
+    0.23552606  0.30952657  0.54294396
+    0.23360277  0.31382773  0.54391424
+    0.2316735   0.3181058   0.54483444
+    0.22973926  0.32236127  0.54570633
+    0.22780192  0.32659432  0.546532
+    0.2258633   0.33080515  0.54731353
+    0.22392515  0.334994    0.54805291
+    0.22198915  0.33916114  0.54875211
+    0.22005691  0.34330688  0.54941304
+    0.21812995  0.34743154  0.55003755
+    0.21620971  0.35153548  0.55062743
+    0.21429757  0.35561907  0.5511844
+    0.21239477  0.35968273  0.55171011
+    0.2105031   0.36372671  0.55220646
+    0.20862342  0.36775151  0.55267486
+    0.20675628  0.37175775  0.55311653
+    0.20490257  0.37574589  0.55353282
+    0.20306309  0.37971644  0.55392505
+    0.20123854  0.38366989  0.55429441
+    0.1994295   0.38760678  0.55464205
+    0.1976365   0.39152762  0.55496905
+    0.19585993  0.39543297  0.55527637
+    0.19410009  0.39932336  0.55556494
+    0.19235719  0.40319934  0.55583559
+    0.19063135  0.40706148  0.55608907
+    0.18892259  0.41091033  0.55632606
+    0.18723083  0.41474645  0.55654717
+    0.18555593  0.4185704   0.55675292
+    0.18389763  0.42238275  0.55694377
+    0.18225561  0.42618405  0.5571201
+    0.18062949  0.42997486  0.55728221
+    0.17901879  0.43375572  0.55743035
+    0.17742298  0.4375272   0.55756466
+    0.17584148  0.44128981  0.55768526
+    0.17427363  0.4450441   0.55779216
+    0.17271876  0.4487906   0.55788532
+    0.17117615  0.4525298   0.55796464
+    0.16964573  0.45626209  0.55803034
+    0.16812641  0.45998802  0.55808199
+    0.1666171   0.46370813  0.55811913
+    0.16511703  0.4674229   0.55814141
+    0.16362543  0.47113278  0.55814842
+    0.16214155  0.47483821  0.55813967
+    0.16066467  0.47853961  0.55811466
+    0.15919413  0.4822374   0.5580728
+    0.15772933  0.48593197  0.55801347
+    0.15626973  0.4896237   0.557936
+    0.15481488  0.49331293  0.55783967
+    0.15336445  0.49700003  0.55772371
+    0.1519182   0.50068529  0.55758733
+    0.15047605  0.50436904  0.55742968
+    0.14903918  0.50805136  0.5572505
+    0.14760731  0.51173263  0.55704861
+    0.14618026  0.51541316  0.55682271
+    0.14475863  0.51909319  0.55657181
+    0.14334327  0.52277292  0.55629491
+    0.14193527  0.52645254  0.55599097
+    0.14053599  0.53013219  0.55565893
+    0.13914708  0.53381201  0.55529773
+    0.13777048  0.53749213  0.55490625
+    0.1364085   0.54117264  0.55448339
+    0.13506561  0.54485335  0.55402906
+    0.13374299  0.54853458  0.55354108
+    0.13244401  0.55221637  0.55301828
+    0.13117249  0.55589872  0.55245948
+    0.1299327   0.55958162  0.55186354
+    0.12872938  0.56326503  0.55122927
+    0.12756771  0.56694891  0.55055551
+    0.12645338  0.57063316  0.5498411
+    0.12539383  0.57431754  0.54908564
+    0.12439474  0.57800205  0.5482874
+    0.12346281  0.58168661  0.54744498
+    0.12260562  0.58537105  0.54655722
+    0.12183122  0.58905521  0.54562298
+    0.12114807  0.59273889  0.54464114
+    0.12056501  0.59642187  0.54361058
+    0.12009154  0.60010387  0.54253043
+    0.11973756  0.60378459  0.54139999
+    0.11951163  0.60746388  0.54021751
+    0.11942341  0.61114146  0.53898192
+    0.11948255  0.61481702  0.53769219
+    0.11969858  0.61849025  0.53634733
+    0.12008079  0.62216081  0.53494633
+    0.12063824  0.62582833  0.53348834
+    0.12137972  0.62949242  0.53197275
+    0.12231244  0.63315277  0.53039808
+    0.12344358  0.63680899  0.52876343
+    0.12477953  0.64046069  0.52706792
+    0.12632581  0.64410744  0.52531069
+    0.12808703  0.64774881  0.52349092
+    0.13006688  0.65138436  0.52160791
+    0.13226797  0.65501363  0.51966086
+    0.13469183  0.65863619  0.5176488
+    0.13733921  0.66225157  0.51557101
+    0.14020991  0.66585927  0.5134268
+    0.14330291  0.66945881  0.51121549
+    0.1466164   0.67304968  0.50893644
+    0.15014782  0.67663139  0.5065889
+    0.15389405  0.68020343  0.50417217
+    0.15785146  0.68376525  0.50168574
+    0.16201598  0.68731632  0.49912906
+    0.1663832   0.69085611  0.49650163
+    0.1709484   0.69438405  0.49380294
+    0.17570671  0.6978996   0.49103252
+    0.18065314  0.70140222  0.48818938
+    0.18578266  0.70489133  0.48527326
+    0.19109018  0.70836635  0.48228395
+    0.19657063  0.71182668  0.47922108
+    0.20221902  0.71527175  0.47608431
+    0.20803045  0.71870095  0.4728733
+    0.21400015  0.72211371  0.46958774
+    0.22012381  0.72550945  0.46622638
+    0.2263969   0.72888753  0.46278934
+    0.23281498  0.73224735  0.45927675
+    0.2393739   0.73558828  0.45568838
+    0.24606968  0.73890972  0.45202405
+    0.25289851  0.74221104  0.44828355
+    0.25985676  0.74549162  0.44446673
+    0.26694127  0.74875084  0.44057284
+    0.27414922  0.75198807  0.4366009
+    0.28147681  0.75520266  0.43255207
+    0.28892102  0.75839399  0.42842626
+    0.29647899  0.76156142  0.42422341
+    0.30414796  0.76470433  0.41994346
+    0.31192534  0.76782207  0.41558638
+    0.3198086   0.77091403  0.41115215
+    0.3277958   0.77397953  0.40664011
+    0.33588539  0.7770179   0.40204917
+    0.34407411  0.78002855  0.39738103
+    0.35235985  0.78301086  0.39263579
+    0.36074053  0.78596419  0.38781353
+    0.3692142   0.78888793  0.38291438
+    0.37777892  0.79178146  0.3779385
+    0.38643282  0.79464415  0.37288606
+    0.39517408  0.79747541  0.36775726
+    0.40400101  0.80027461  0.36255223
+    0.4129135   0.80304099  0.35726893
+    0.42190813  0.80577412  0.35191009
+    0.43098317  0.80847343  0.34647607
+    0.44013691  0.81113836  0.3409673
+    0.44936763  0.81376835  0.33538426
+    0.45867362  0.81636288  0.32972749
+    0.46805314  0.81892143  0.32399761
+    0.47750446  0.82144351  0.31819529
+    0.4870258   0.82392862  0.31232133
+    0.49661536  0.82637633  0.30637661
+    0.5062713   0.82878621  0.30036211
+    0.51599182  0.83115784  0.29427888
+    0.52577622  0.83349064  0.2881265
+    0.5356211   0.83578452  0.28190832
+    0.5455244   0.83803918  0.27562602
+    0.55548397  0.84025437  0.26928147
+    0.5654976   0.8424299   0.26287683
+    0.57556297  0.84456561  0.25641457
+    0.58567772  0.84666139  0.24989748
+    0.59583934  0.84871722  0.24332878
+    0.60604528  0.8507331   0.23671214
+    0.61629283  0.85270912  0.23005179
+    0.62657923  0.85464543  0.22335258
+    0.63690157  0.85654226  0.21662012
+    0.64725685  0.85839991  0.20986086
+    0.65764197  0.86021878  0.20308229
+    0.66805369  0.86199932  0.19629307
+    0.67848868  0.86374211  0.18950326
+    0.68894351  0.86544779  0.18272455
+    0.69941463  0.86711711  0.17597055
+    0.70989842  0.86875092  0.16925712
+    0.72039115  0.87035015  0.16260273
+    0.73088902  0.87191584  0.15602894
+    0.74138803  0.87344918  0.14956101
+    0.75188414  0.87495143  0.14322828
+    0.76237342  0.87642392  0.13706449
+    0.77285183  0.87786808  0.13110864
+    0.78331535  0.87928545  0.12540538
+    0.79375994  0.88067763  0.12000532
+    0.80418159  0.88204632  0.11496505
+    0.81457634  0.88339329  0.11034678
+    0.82494028  0.88472036  0.10621724
+    0.83526959  0.88602943  0.1026459
+    0.84556056  0.88732243  0.09970219
+    0.8558096   0.88860134  0.09745186
+    0.86601325  0.88986815  0.09595277
+    0.87616824  0.89112487  0.09525046
+    0.88627146  0.89237353  0.09537439
+    0.89632002  0.89361614  0.09633538
+    0.90631121  0.89485467  0.09812496
+    0.91624212  0.89609127  0.1007168
+    0.92610579  0.89732977  0.10407067
+    0.93590444  0.8985704   0.10813094
+    0.94563626  0.899815    0.11283773
+    0.95529972  0.90106534  0.11812832
+    0.96489353  0.90232311  0.12394051
+    0.97441665  0.90358991  0.13021494
+    0.98386829  0.90486726  0.13689671
+    0.99324789  0.90615657  0.1439362];
 
 P = size(viridi,1);
 
 if nargin < 1
-   N = P;
+    N = P;
 end
 
 %N = min(N,P);

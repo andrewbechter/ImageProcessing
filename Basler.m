@@ -18,33 +18,27 @@ classdef Basler <Image
         %--------------%
         
         
-        function [obj] = Basler(directory,opts,memoryStep,startFrame,endFrame,type,fs) % constructor (fills in field values with default settings)
+        function [obj] = Basler(directory,opts) % constructor (fills in field values with default settings)
             
+            %%----------------------------
+            % Break out processing options
+            %%----------------------------
+            
+            memoryStep = opts.memStep ;
+            
+            endFrame = opts.endFile;
+            
+            startFrame = opts.startFile;
+            
+            fs = opts.fs;
+            
+            type = opts.type ;
             
             % check the number of input variables and handle missing values
             if nargin <1
                 disp('you must specify a data path')
             elseif nargin < 2
-                memoryStep = 10;
-                type = 'fast';
-                endFrame = 0;
-                startFrame = 1;
-                fs = 1;
-            elseif nargin < 3
-                type = 'fast';
-                endFrame = 0;
-                startFrame = 1;
-                fs = 1;
-            elseif nargin < 4
-                type = 'fast';
-                endFrame = 0;
-                fs= 1;
-            elseif nargin < 5
-                type = 'fast';
-                fs = 1;
-            elseif nargin < 6
-                fs = 1;
-                
+                disp('you must specify processing options')              
             end
             
             %%----------------------------
@@ -90,6 +84,7 @@ classdef Basler <Image
             %%----------------------------
             % Compute diffraction pattern
             %%----------------------------
+            
             [airy] = Image.diffraction_pattern(q,lambda,npup,alpha); % compute diffraction pattern
             
             [airy,~,~] = Image.centroid_center(airy, 0.1, 5, false); % center image and calculate dx,dy
@@ -99,6 +94,7 @@ classdef Basler <Image
             %%--------------------
             % Initialize variables
             %%--------------------
+            
             obj.imStack =[];
             
             obj.coAdd=[];

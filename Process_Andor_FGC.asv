@@ -10,8 +10,7 @@
 % inputs: ## filaname: filename including directory and .sifx
 %         ## opts: include processing options:
 %         ## memoryStep: interval to store frames (storing frames uses up memory so be careful. The total frames stored should be ~100 max)
-%         ## startFile: frame number to end on
-%         ## endFile: frame number to end on (if specified to be [] or more than the number frames
+%         ## frameEnd: frame number to end on (if specified to be [] or more than the number frames
 %           in spool, then all frames are processed).  
 %         ## type: 'fast' or 'full' processing. fast uses approximate parameters, full uses 2D Gaussian fit
 %        
@@ -23,15 +22,12 @@
 %%--------------------------
 % name: analyzeAndorData
 %%--------------------------
-
 % purpose: calculates useful things using time stamps and fit parameters
 % inputs: ## Andor object
 % notes: this method modifies exisiting Andor objects by populating or
 % overwriting useful things for analysis 
 % outputs: ## Andor object
-
 tic
-
 %%------------------
 % Processing Options
 %%------------------
@@ -84,22 +80,19 @@ load('CalibrationFiles/Andor/190408_back')% load background file
 
 opts.backgroundfile = backgroundFrame; %backgroundfile
 
-%%------------------
-% Data Files
-%%------------------
-
-% Final Acquisition camera
-filename = 'P:\iLocater\AcquisitionCamera\Final\Andor\20190408\Strehl\Spooled files.sifx';
-
-% PSD realtime
-%filename = 'S:\ImageProcessing\MLA\PSD_realtime\Spooled files.sifx';
-
-%%------------------
-% Function Calls
-%%------------------
-
+%=============================================%
+%Set1 Final Acquisition camera
+filename = 'P:\iLocater\AcquisitionCamera\Final\Andor\190408\Strehl\Spooled files.sifx';
 FGC = Andor(filename,opts); % reads in data and populates fundamental object properties
 FGC = analyzeAndorData(FGC,opts); %calculates standard analysis
-% save Results/FGC
+% save Results/New/Aus1 FGC
+% clear Aus1 filename
+
+%PSD realtime
+% filename = 'S:\ImageProcessing\MLA\PSD_realtime\Spooled files.sifx';
+% FGC = Andor(filename,opts,memStep,startFile,endFile,'full'); % reads in data and populates fundamental object properties
+% FGC = analyzeAndorData(FGC,opts); %calculates standard analysis
+% save Results/New/Aus1 FGC
+% clear Aus1 filename
 
 toc

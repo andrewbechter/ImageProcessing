@@ -20,44 +20,44 @@ classdef Andor < Image
         % constructor
         %--------------%
         
-        function [obj] = Andor(andor_file,opts,memoryStep,startFrame,endFrame,type)
+        function [obj] = Andor(andor_file,opts)
+            
+            %%----------------------------
+            % Break out processing options
+            %%----------------------------
+            
+            memoryStep = opts.memStep ;
+            
+            endFrame = opts.endFile;
+            
+            startFrame = opts.startFile;
+            
+            type = opts.type ;
             
             % check the number of input variables and handle missing values
-            if nargin < 2
-                disp('you must specify a data path and opts')
-            elseif nargin < 3
-                memoryStep = 0;
-                type = 'fast';
-                endFrame = 0;
-                startFrame = 1;
-            elseif nargin < 4
-                type = 'fast';
-                endFrame = 0;
-                startFrame = 1;
-            elseif nargin < 5
-                type = 'fast';
-                endFrame = 0;
-            elseif nargin < 6
-                type = 'fast';
+            if nargin <1
+                disp('you must specify a data path')
+            elseif nargin < 2
+                disp('you must specify processing options')              
             end
             
             %%----------------------------
             % Break out processing options
             %%----------------------------
             
-            backgroundfile = opts.backgroundfile;
+            backgroundFile = opts.backgroundfile;
             
             trim = opts.trim;
+            
+            srgrid = opts.srgrid;
             
             fineGrid = opts.fineGrid;
             
             fitGrid = opts.fitGrid;
             
-            srgrid = opts.srgrid;
-            
             obj.memoryStep = memoryStep;
             
-            obj.timeUnits = 1e-6; %recorded in microseconds
+            obj.timeUnits = 1; %recorded in seconds
             
             obj.filename = andor_file;% stores the filename with the object
             
@@ -81,15 +81,20 @@ classdef Andor < Image
             
             q = F*lambda/(pix); %samples across PSF
             
-            [airy] = Image.diffraction_pattern(2*q,lambda,npup,alpha); % compute diffraction pattern
+            %%----------------------------
+            % Compute diffraction pattern
+            %%----------------------------
             
-            [airy] = imresize(airy,0.5);
+            [airy] = Image.diffraction_pattern(q,lambda,npup,alpha); % compute diffraction pattern
             
-            airy = airy./sum(sum(airy));
+            [airy,~,~] = Image.centroid_center(airy, 0.1, 5, false); % center image and calculate dx,dy
+            
+            obj. airy = airy;
             
             %%--------------------
             % Initialize variables
             %%--------------------
+            
             obj.imStack =[];
             
             obj.coAdd=[];
@@ -147,7 +152,7 @@ classdef Andor < Image
                 % Remove background
                 %%-----------------
                 
-                [imageData,obj.medback(ii),obj.sigback(ii)] = Image.subBackground(imageData,backgroundfile);
+                [imageData,obj.medback,obj.sigback] = Image.subBackground(imageData,backgroundFile);
                 
                 %%----------------
                 % Constuctt Grid
@@ -272,7 +277,7 @@ classdef Andor < Image
             [obj] = calcMean(obj);
             [obj] = calcRMS(obj);
             [obj] = calcRange(obj);
-            [obj] = calcFrameRate(obj);
+            [obj] = FrameRate(obj);
             obj.r = sqrt((obj.fitParameters(:,2)-obj.Mean(2)).^2 + (obj.fitParameters(:,4)-obj.Mean(4)).^2);
             [obj] = calcFFT(obj);
             [obj] = calcPSD(obj);
